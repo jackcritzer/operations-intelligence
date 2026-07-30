@@ -7,11 +7,10 @@ ship date, and why?
 
 ## Proposed definition
 
-An order is currently fulfillable when every active order line can be fully
-supplied by its required ship date using eligible:
-
-1. usable, unreserved on-hand inventory; and
-2. confirmed inbound inventory expected to arrive in time.
+An order is currently fulfillable when every active order line can be fully 
+supplied by its required ship date from its assigned fulfillment warehouse 
+using usable, unreserved on-hand inventory and confirmed inbound inventory 
+expected to arrive in time.
 
 An order is blocked when one or more lines have a projected shortfall.
 
@@ -41,6 +40,19 @@ An order is blocked when one or more lines have a projected shortfall.
   already been reserved?
 - Is the first slice evaluating requested or promised ship dates?
 - What event source owns inventory reservations?
+
+## First-slice boundaries
+
+- Each order line has one assigned fulfillment warehouse.
+- Supply at other warehouses does not count toward fulfillment.
+- Split fulfillment and inventory transfers are deferred.
+- Confirmed inbound supply may count toward projected availability.
+- Inbound supply is evaluated using its expected availability time, not merely
+  its carrier arrival date.
+- The engine performs a projected allocation to avoid counting the same supply
+  for multiple orders.
+- Projected allocation does not create or replace an upstream inventory
+  reservation.
 
 ## Expected answer shape
 
