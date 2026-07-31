@@ -1,88 +1,112 @@
 # Scenario: Shipment Delay Blocks an Order
 
+## Business question
+
+Can customer order `SO-1001` be fulfilled in full from its assigned warehouse
+by its required ship time, and if not, what prevents fulfillment?
+
 ## Purpose
 
-Demonstrate that a change to expected inbound supply can make a previously
-fulfillable customer order unfulfillable.
+Demonstrate that a delay to eligible inbound supply can change a customer
+order from `FULFILLABLE` to `BLOCKED`, while preserving a structured
+explanation of the shortfall and the change that caused it.
 
-## Order
+## Rules exercised
 
-- Order: SO-1001
-- Customer: Midwest Pump & Valve
-- Required ship date: August 8
-- Partial shipments: not yet decided
+- Supply is eligible only when its warehouse and SKU match the order line.
+- Cross-warehouse fulfillment is out of scope.
+- Usable inventory is reduced by inventory already reserved outside this
+  calculation.
+- Confirmed inbound supply is eligible only when it is expected to be
+  available on or before the order's required ship time.
+- Every line must be fully covered for the order to be `FULFILLABLE`.
+- A partially covered line is `BLOCKED`, although its projected allocation is
+  still reported.
+- The calculation projects allocation but does not create reservations or
+  mutate operational state.
 
-OrderPlaced
-Source: ERP / Order Management
+## Order event
 
-### Lines
+`OrderPlaced` from the ERP:
 
-| SKU         | Quantity |
-| ----------- | -------: |
-| BEARING-440 |      100 |
-| SEAL-KIT-12 |       20 |
+- Order ID: `SO-1001`
+- Placed at: `2026-08-01T09:00:00-05:00`
+- Required ship time: `2026-08-08T17:00:00-05:00`
 
-## Current inventory
+| Order line | SKU | Fulfillment warehouse | Quantity |
+|---|---|---|---:|
+| `SO-1001-L1` | `BEARING-440` | `CHI` | 100 |
+| `SO-1001-L2` | `SEAL-KIT-12` | `CHI` | 20 |
 
-### Chicago
+Customer identity and customer-level priority are not modeled in this slice.
 
-| SKU         | On hand | Reserved | Available |
-| ----------- | ------: | -------: | --------: |
-| BEARING-440 |      80 |       30 |        50 |
-| SEAL-KIT-12 |      20 |        0 |        20 |
+## Inventory events
 
-### Dallas
+`InventoryPositionReported` from the WMS:
 
-| SKU         | On hand | Reserved | Available |
-| ----------- | ------: | -------: | --------: |
-| BEARING-440 |      40 |        0 |        40 |
+| Warehouse | SKU | Usable | Reserved | Unusable | Available to calculation |
+|---|---|---:|---:|---:|---:|
+| `CHI` | `BEARING-440` | 120 | 30 | 0 | 90 |
+| `CHI` | `SEAL-KIT-12` | 20 | 0 | 0 | 20 |
 
-InventoryBalanceReported
-Source: WMS
+`available to calculation = usableQuantity - reservedQuantity`.
 
-## Inbound supply
+## Inbound shipment event
 
-- Shipment: IN-900
-- Destination: Chicago
-- SKU: BEARING-440
-- Quantity: 30
-- Initial expected receipt date: August 6
+`InboundShipmentConfirmed` from the transportation system:
 
-InboundShipmentScheduled
-Source: Supplier or Transportation System
+- Shipment ID: `IN-900`
+- Destination warehouse: `CHI`
+- Initial expected availability: `2026-08-06T09:00:00-05:00`
 
-## Initial assessment
+| Shipment line | SKU | Quantity |
+|---|---|---:|
+| `IN-900-L1` | `BEARING-440` | 30 |
 
-Assuming inventory may be combined across warehouses:
+## Before the delay
 
-- 90 BEARING-440 units are currently available.
-- 30 additional units are expected before August 8.
-- 120 units are projected to be available.
-- The order is expected to be fulfillable.
+For `SO-1001-L1`, 90 units are available on hand and 30 confirmed inbound
+units are expected before the required ship time. The engine can project an
+allocation of 100 units without using all 30 inbound units.
 
-## Event
+`SO-1001-L2` is fully covered by its 20 on-hand units.
 
-IN-900 is delayed from August 6 to August 11.
+Expected order status: `FULFILLABLE`.
 
-InboundShipmentDelayed
-Source: Supplier or Transportation System
+## Delay event
 
-## Revised assessment
+`InboundShipmentDelayed` changes `IN-900`:
 
-- 90 BEARING-440 units are available by August 8.
-- The line requires 100 units.
-- The projected shortfall is 10 units.
-- SO-1001 is blocked.
+- Previous expected availability: `2026-08-06T09:00:00-05:00`
+- New expected availability: `2026-08-11T09:00:00-05:00`
+- Changed at: `2026-08-04T14:00:00-05:00`
+- Reason: carrier capacity constraint
 
-## Explanation
+## After the delay
 
-SO-1001 cannot currently be fulfilled by August 8 because BEARING-440 is
-short by 10 units. Thirty inbound units were previously expected before the
-required ship date, but shipment IN-900 is now expected on August 11.
+`IN-900` is no longer eligible for `SO-1001` because its expected availability
+is after the required ship time.
 
-## Unresolved assumptions
+| Order line | Required | Projected allocation | Shortfall | Status |
+|---|---:|---:|---:|---|
+| `SO-1001-L1` | 100 | 90 | 10 | `BLOCKED` |
+| `SO-1001-L2` | 20 | 20 | 0 | `FULFILLABLE` |
 
-- Whether Chicago and Dallas inventory may be combined
-- Whether doing so implies multiple outbound shipments
-- Whether split fulfillment is allowed for this order
-- Whether inbound supply is reserved for specific orders
+Expected order status: `BLOCKED`, because at least one line is blocked.
+
+The explanation must identify:
+
+- an `INSUFFICIENT_PROJECTED_SUPPLY` condition with a shortfall of 10;
+- the 30 units on `IN-900` as `INBOUND_AVAILABLE_TOO_LATE`; and
+- the shipment delay as the triggering change, including its previous and new
+  expected availability times.
+
+## Explicitly out of scope
+
+- combining inventory across warehouses;
+- moving inventory between warehouses;
+- customer tiers or customer-specific priority;
+- alternate fulfillment warehouses;
+- partial shipment policy;
+- committing the projected allocation as a reservation;
+- optimizing allocation to maximize the number or value of fulfilled orders.
