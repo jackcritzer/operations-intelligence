@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import type { 
-        OperationalEvent, 
         OrderPlacedEvent, 
         InventoryPositionReportedEvent, 
         InboundShipmentConfirmedEvent, 
@@ -37,11 +36,6 @@ type InboundShipmentConfirmedEventOverrides =
 type InboundShipmentDelayedEventOverrides =
   Omit<Partial<InboundShipmentDelayedEvent>, "payload"> & {
     payload?: Partial<InboundShipmentDelayedEvent["payload"]>;
-  };
-
-type EventOverrides<T extends { payload: object }> =
-  Omit<Partial<T>, "payload"> & {
-    payload?: Partial<T["payload"]>;
   };
 
 describe("applyEvent", () => {

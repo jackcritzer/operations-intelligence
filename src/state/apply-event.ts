@@ -91,12 +91,19 @@ function applyInventoryPositionReported(
 	state: OperationalState,
 	event: Extract<OperationalEvent, { eventType: "InventoryPositionReported" }>,
 ): void {
-	if (event.payload.reservedQuantity > event.payload.usableQuantity) {
+
+  if (state.inventoryPositions.has(inventoryPositionKey(event.payload.warehouseId, event.payload.sku))) {
     throw new EventApplicationError(
-      `Reserved quantity cannot exceed usable quantity for ` +
-        `${event.payload.warehouseId}:${event.payload.sku}`,
+      `Inventory position for ${event.payload.warehouseId}:${event.payload.sku} already exists`,
     );
   }
+
+	if (event.payload.reservedQuantity > event.payload.usableQuantity) {
+		throw new EventApplicationError(
+		`Reserved quantity cannot exceed usable quantity for ` +
+			`${event.payload.warehouseId}:${event.payload.sku}`,
+		);
+	}
 
 	validateNonNegativeQuantities([
     {
@@ -132,18 +139,25 @@ function applyInboundShipmentConfirmed(
 	state: OperationalState,
 	event: Extract<OperationalEvent, { eventType: "InboundShipmentConfirmed" }>,
 ): void {
-	if (event.payload.lines.length === 0) {
+
+  if (state.inboundShipments.has(event.payload.shipmentId)) {
     throw new EventApplicationError(
-      `Inbound shipment ${event.payload.shipmentId} must contain at least one line`,
+      `Inbound shipment ${event.payload.shipmentId} already exists`,
     );
   }
 
+	if (event.payload.lines.length === 0) {
+		throw new EventApplicationError(
+		`Inbound shipment ${event.payload.shipmentId} must contain at least one line`,
+		);
+	}
+
 	validatePositiveQuantities(
-    event.payload.lines.map((line) => ({
-      name: `Shipment line ${line.shipmentLineId}`,
-      quantity: line.quantity,
-    })),
-  );
+		event.payload.lines.map((line) => ({
+		name: `Shipment line ${line.shipmentLineId}`,
+		quantity: line.quantity,
+		})),
+	);
 
 	const shipment: InboundShipment = {
 		shipmentId: event.payload.shipmentId,
