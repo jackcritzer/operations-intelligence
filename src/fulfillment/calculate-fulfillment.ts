@@ -86,7 +86,7 @@ interface InboundSupplyItem {
 
 type SupplyItem = OnHandSupplyItem | InboundSupplyItem;
 
-export interface SupplyAllocationRecord {
+interface SupplyAllocationRecord {
   orderId: string;
   orderLineId: string;
   quantity: number;
@@ -152,16 +152,17 @@ function allocateDemandItem(
     supply.allocations.map((record) => ({ ...record })),
   );
 
-  const lateInboundSupply = matchingSupply.filter(
-    (supply): supply is InboundSupplyItem =>
-      supply.type === "INBOUND" &&
-      Date.parse(supply.expectedAvailableAt) >
-        Date.parse(demand.requiredShipAt),
-  )
-  .map((supply) => ({
-    ...supply,
-    allocations: supply.allocations.map((record) => ({ ...record })),
-  }));
+  const lateInboundSupply = matchingSupply
+    .filter(
+      (supply): supply is InboundSupplyItem =>
+        supply.type === "INBOUND" &&
+        Date.parse(supply.expectedAvailableAt) >
+          Date.parse(demand.requiredShipAt),
+    )
+    .map((supply) => ({
+      ...supply,
+      allocations: supply.allocations.map((record) => ({ ...record })),
+    }));
 
   const eligibleSupply = supplyItems
     .filter((supply) => isSupplyEligible(supply, demand))
@@ -281,7 +282,7 @@ function toLineAssessment(
     : [];
 
   const triggeringChanges = isBlocked
-    ? toTriggeringChanges(allocation, state)
+    ? toTriggeringChanges(blockingConditions, state)
     : [];
 
   return {
@@ -378,42 +379,51 @@ function toBlockingConditions(
     unexplainedShortfall -= relevantQuantity;
   }
 
+  if (unexplainedShortfall > 0) {
+    conditions.push({
+      type: "SHORTFALL_CAUSE_UNDETERMINED",
+      quantity: unexplainedShortfall,
+    });
+  }
+
   return conditions;
 }
 
 function toTriggeringChanges(
-  allocation: DemandAllocation,
+  blockingConditions: BlockingCondition[],
   state: OperationalState,
 ): TriggeringChange[] {
   const changes: TriggeringChange[] = [];
   const includedShipmentIds = new Set<string>();
 
-  for (const supply of allocation.lateInboundSupply) {
-    if (includedShipmentIds.has(supply.shipmentId)) {
+  for (const condition of blockingConditions) {
+    if (
+      condition.type !== "INBOUND_AVAILABLE_TOO_LATE" ||
+      includedShipmentIds.has(condition.shipmentId)
+    ) {
       continue;
     }
 
-    const change = state.shipmentAvailabilityChanges.get(supply.shipmentId);
+    const change = state.shipmentAvailabilityChanges.get(condition.shipmentId);
 
     if (!change) {
       continue;
     }
 
-    const shipmentDelayTrigger: ShipmentDelayTrigger = {
+    const trigger: ShipmentDelayTrigger = {
       type: "SHIPMENT_DELAYED",
-      shipmentId: supply.shipmentId,
+      shipmentId: condition.shipmentId,
       previousExpectedAvailableAt: change.previousExpectedAvailableAt,
       newExpectedAvailableAt: change.newExpectedAvailableAt,
       changedAt: change.changedAt,
     };
 
     if (change.reason !== undefined) {
-      shipmentDelayTrigger.reason = change.reason;
+      trigger.reason = change.reason;
     }
 
-    changes.push(shipmentDelayTrigger);
-
-    includedShipmentIds.add(supply.shipmentId);
+    changes.push(trigger);
+    includedShipmentIds.add(condition.shipmentId);
   }
 
   return changes;

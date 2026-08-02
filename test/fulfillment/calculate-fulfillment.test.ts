@@ -244,127 +244,304 @@ describe("calculateFulfillment", () => {
       order2AfterDelay,
     ]);
   });
-});
 
-it("explains when higher-priority demand consumes supply needed by a later order", () => {
-  const state = createEmptyOperationalState();
+  it("explains when higher-priority demand consumes supply needed by a later order", () => {
+    const state = createEmptyOperationalState();
 
-  applyEvent(state, {
-    eventId: "event-inventory-1",
-    eventType: "InventoryPositionReported",
-    occurredAt: "2026-08-01T08:00:00-05:00",
-    receivedAt: "2026-08-01T08:00:01-05:00",
-    source: "WMS",
-    payload: {
-      warehouseId: "CHI",
-      sku: "BRG-440",
-      usableQuantity: 6,
-      reservedQuantity: 0,
-      unusableQuantity: 0,
-    },
+    applyEvent(state, {
+      eventId: "event-inventory-1",
+      eventType: "InventoryPositionReported",
+      occurredAt: "2026-08-01T08:00:00-05:00",
+      receivedAt: "2026-08-01T08:00:01-05:00",
+      source: "WMS",
+      payload: {
+        warehouseId: "CHI",
+        sku: "BRG-440",
+        usableQuantity: 6,
+        reservedQuantity: 0,
+        unusableQuantity: 0,
+      },
+    });
+
+    applyEvent(state, {
+      eventId: "event-order-3001",
+      eventType: "OrderPlaced",
+      occurredAt: "2026-08-01T09:00:00-05:00",
+      receivedAt: "2026-08-01T09:00:01-05:00",
+      source: "ERP",
+      payload: {
+        orderId: "SO-3001",
+        placedAt: "2026-08-01T09:00:00-05:00",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        lines: [
+          {
+            orderLineId: "SO-3001-L1",
+            sku: "BRG-440",
+            quantity: 4,
+            fulfillmentWarehouseId: "CHI",
+          },
+        ],
+      },
+    });
+
+    applyEvent(state, {
+      eventId: "event-order-3002",
+      eventType: "OrderPlaced",
+      occurredAt: "2026-08-01T10:00:00-05:00",
+      receivedAt: "2026-08-01T10:00:01-05:00",
+      source: "ERP",
+      payload: {
+        orderId: "SO-3002",
+        placedAt: "2026-08-01T10:00:00-05:00",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        lines: [
+          {
+            orderLineId: "SO-3002-L1",
+            sku: "BRG-440",
+            quantity: 4,
+            fulfillmentWarehouseId: "CHI",
+          },
+        ],
+      },
+    });
+
+    expect(calculateFulfillment(state)).toEqual([
+      {
+        orderId: "SO-3001",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        status: "FULFILLABLE",
+        lines: [
+          {
+            orderLineId: "SO-3001-L1",
+            sku: "BRG-440",
+            fulfillmentWarehouseId: "CHI",
+            requiredQuantity: 4,
+            projectedAllocation: 4,
+            projectedShortfall: 0,
+            status: "FULFILLABLE",
+            supplyContributions: [
+              {
+                type: "ON_HAND",
+                warehouseId: "CHI",
+                sku: "BRG-440",
+                quantity: 4,
+              },
+            ],
+            blockingConditions: [],
+            triggeringChanges: [],
+          },
+        ],
+      },
+      {
+        orderId: "SO-3002",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        status: "BLOCKED",
+        lines: [
+          {
+            orderLineId: "SO-3002-L1",
+            sku: "BRG-440",
+            fulfillmentWarehouseId: "CHI",
+            requiredQuantity: 4,
+            projectedAllocation: 2,
+            projectedShortfall: 2,
+            status: "BLOCKED",
+            supplyContributions: [
+              {
+                type: "ON_HAND",
+                warehouseId: "CHI",
+                sku: "BRG-440",
+                quantity: 2,
+              },
+            ],
+            blockingConditions: [
+              {
+                type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
+                quantity: 2,
+                consumingOrderId: "SO-3001",
+                consumingOrderLineId: "SO-3001-L1",
+              },
+            ],
+            triggeringChanges: [],
+          },
+        ],
+      },
+    ]);
   });
 
-  applyEvent(state, {
-    eventId: "event-order-3001",
-    eventType: "OrderPlaced",
-    occurredAt: "2026-08-01T09:00:00-05:00",
-    receivedAt: "2026-08-01T09:00:01-05:00",
-    source: "ERP",
-    payload: {
-      orderId: "SO-3001",
-      placedAt: "2026-08-01T09:00:00-05:00",
-      requiredShipAt: "2026-08-08T17:00:00-05:00",
-      lines: [
-        {
-          orderLineId: "SO-3001-L1",
-          sku: "BRG-440",
-          quantity: 4,
-          fulfillmentWarehouseId: "CHI",
-        },
-      ],
-    },
+  it("partially fulfills an order and identifies an unexplained remaining shortfall", () => {
+    const state = createEmptyOperationalState();
+
+    applyEvent(state, {
+      eventId: "event-inventory-4001",
+      eventType: "InventoryPositionReported",
+      occurredAt: "2026-08-02T08:00:00-05:00",
+      receivedAt: "2026-08-02T08:00:01-05:00",
+      source: "WMS",
+      payload: {
+        warehouseId: "CHI",
+        sku: "BRG-440",
+        usableQuantity: 7,
+        reservedQuantity: 0,
+        unusableQuantity: 0,
+      },
+    });
+
+    applyEvent(state, {
+      eventId: "event-order-4001",
+      eventType: "OrderPlaced",
+      occurredAt: "2026-08-02T09:00:00-05:00",
+      receivedAt: "2026-08-02T09:00:01-05:00",
+      source: "ERP",
+      payload: {
+        orderId: "SO-4001",
+        placedAt: "2026-08-02T09:00:00-05:00",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        lines: [
+          {
+            orderLineId: "SO-4001-L1",
+            sku: "BRG-440",
+            quantity: 10,
+            fulfillmentWarehouseId: "CHI",
+          },
+        ],
+      },
+    });
+
+    expect(calculateFulfillment(state)).toEqual([
+      {
+        orderId: "SO-4001",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        status: "BLOCKED",
+        lines: [
+          {
+            orderLineId: "SO-4001-L1",
+            sku: "BRG-440",
+            fulfillmentWarehouseId: "CHI",
+            requiredQuantity: 10,
+            projectedAllocation: 7,
+            projectedShortfall: 3,
+            status: "BLOCKED",
+            supplyContributions: [
+              {
+                type: "ON_HAND",
+                warehouseId: "CHI",
+                sku: "BRG-440",
+                quantity: 7,
+              },
+            ],
+            blockingConditions: [
+              {
+                type: "SHORTFALL_CAUSE_UNDETERMINED",
+                quantity: 3,
+              },
+            ],
+            triggeringChanges: [],
+          },
+        ],
+      },
+    ]);
   });
 
-  applyEvent(state, {
-    eventId: "event-order-3002",
-    eventType: "OrderPlaced",
-    occurredAt: "2026-08-01T10:00:00-05:00",
-    receivedAt: "2026-08-01T10:00:01-05:00",
-    source: "ERP",
-    payload: {
-      orderId: "SO-3002",
-      placedAt: "2026-08-01T10:00:00-05:00",
-      requiredShipAt: "2026-08-08T17:00:00-05:00",
-      lines: [
-        {
-          orderLineId: "SO-3002-L1",
-          sku: "BRG-440",
-          quantity: 4,
-          fulfillmentWarehouseId: "CHI",
-        },
-      ],
-    },
-  });
+  it("partially fulfills an order from warehouse + inbound shipment and identifies an unexplained remaining shortfall", () => {
+    const state = createEmptyOperationalState();
 
-  expect(calculateFulfillment(state)).toEqual([
-    {
-      orderId: "SO-3001",
-      requiredShipAt: "2026-08-08T17:00:00-05:00",
-      status: "FULFILLABLE",
-      lines: [
-        {
-          orderLineId: "SO-3001-L1",
-          sku: "BRG-440",
-          fulfillmentWarehouseId: "CHI",
-          requiredQuantity: 4,
-          projectedAllocation: 4,
-          projectedShortfall: 0,
-          status: "FULFILLABLE",
-          supplyContributions: [
-            {
-              type: "ON_HAND",
-              warehouseId: "CHI",
-              sku: "BRG-440",
-              quantity: 4,
-            },
-          ],
-          blockingConditions: [],
-          triggeringChanges: [],
-        },
-      ],
-    },
-    {
-      orderId: "SO-3002",
-      requiredShipAt: "2026-08-08T17:00:00-05:00",
-      status: "BLOCKED",
-      lines: [
-        {
-          orderLineId: "SO-3002-L1",
-          sku: "BRG-440",
-          fulfillmentWarehouseId: "CHI",
-          requiredQuantity: 4,
-          projectedAllocation: 2,
-          projectedShortfall: 2,
-          status: "BLOCKED",
-          supplyContributions: [
-            {
-              type: "ON_HAND",
-              warehouseId: "CHI",
-              sku: "BRG-440",
-              quantity: 2,
-            },
-          ],
-          blockingConditions: [
-            {
-              type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
-              quantity: 2,
-              consumingOrderId: "SO-3001",
-              consumingOrderLineId: "SO-3001-L1",
-            },
-          ],
-          triggeringChanges: [],
-        },
-      ],
-    },
-  ]);
+    applyEvent(state, {
+      eventId: "event-inventory-4001",
+      eventType: "InventoryPositionReported",
+      occurredAt: "2026-08-02T08:00:00-05:00",
+      receivedAt: "2026-08-02T08:00:01-05:00",
+      source: "WMS",
+      payload: {
+        warehouseId: "CHI",
+        sku: "BRG-440",
+        usableQuantity: 4,
+        reservedQuantity: 0,
+        unusableQuantity: 0,
+      },
+    });
+
+    applyEvent(state, {
+      eventId: "event-order-4001",
+      eventType: "OrderPlaced",
+      occurredAt: "2026-08-02T09:00:00-05:00",
+      receivedAt: "2026-08-02T09:00:01-05:00",
+      source: "ERP",
+      payload: {
+        orderId: "SO-4001",
+        placedAt: "2026-08-02T09:00:00-05:00",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        lines: [
+          {
+            orderLineId: "SO-4001-L1",
+            sku: "BRG-440",
+            quantity: 10,
+            fulfillmentWarehouseId: "CHI",
+          },
+        ],
+      },
+    });
+
+    applyEvent(state, {
+      eventId: "EVT-INBOUND-901-CONFIRMED",
+      eventType: "InboundShipmentConfirmed",
+      occurredAt: "2026-08-03T10:00:00-05:00",
+      receivedAt: "2026-08-03T10:00:01-05:00",
+      source: "SUPPLIER_INTEGRATION",
+      payload: {
+        shipmentId: "SHIP-4001",
+        destinationWarehouseId: "CHI",
+        expectedAvailableAt: "2026-08-07T12:00:00-05:00",
+        lines: [
+          {
+            shipmentLineId: "SHIP-4001-L1",
+            sku: "BRG-440",
+            quantity: 3,
+          },
+        ],
+      },
+    });
+
+    expect(calculateFulfillment(state)).toEqual([
+      {
+        orderId: "SO-4001",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        status: "BLOCKED",
+        lines: [
+          {
+            orderLineId: "SO-4001-L1",
+            sku: "BRG-440",
+            fulfillmentWarehouseId: "CHI",
+            requiredQuantity: 10,
+            projectedAllocation: 7,
+            projectedShortfall: 3,
+            status: "BLOCKED",
+            supplyContributions: [
+              {
+                type: "ON_HAND",
+                warehouseId: "CHI",
+                sku: "BRG-440",
+                quantity: 4,
+              },
+              {
+                type: "INBOUND",
+                shipmentId: "SHIP-4001",
+                shipmentLineId: "SHIP-4001-L1",
+                warehouseId: "CHI",
+                sku: "BRG-440",
+                quantity: 3,
+                expectedAvailableAt: "2026-08-07T12:00:00-05:00",
+              },
+            ],
+            blockingConditions: [
+              {
+                type: "SHORTFALL_CAUSE_UNDETERMINED",
+                quantity: 3,
+              },
+            ],
+            triggeringChanges: [],
+          },
+        ],
+      },
+    ]);
+  });
 });

@@ -41,7 +41,7 @@ export interface InboundSupplyContribution {
 }
 
 export type BlockingCondition =
-  LateInboundSupplyCondition | HigherPriorityDemandCondition;
+  LateInboundSupplyCondition | HigherPriorityDemandCondition | UndeterminedShortfallCondition;
 
 export interface LateInboundSupplyCondition {
   type: "INBOUND_AVAILABLE_TOO_LATE";
@@ -57,6 +57,11 @@ export interface HigherPriorityDemandCondition {
   quantity: number;
   consumingOrderId: string;
   consumingOrderLineId: string;
+}
+
+export interface UndeterminedShortfallCondition {
+  type: "SHORTFALL_CAUSE_UNDETERMINED";
+  quantity: number;
 }
 
 export type TriggeringChange = ShipmentDelayTrigger;
