@@ -875,18 +875,18 @@ describe("calculateFulfillment", () => {
       ],
       blockingConditions: [
         {
-          type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
-          quantity: 3,
-          consumingOrderId: "SO-7001",
-          consumingOrderLineId: "SO-7001-L1",
-        },
-        {
           type: "INBOUND_AVAILABLE_TOO_LATE",
           shipmentId: "SHIP-7001",
           shipmentLineId: "SHIP-7001-L1",
           quantity: 2,
           expectedAvailableAt: "2026-08-11T09:00:00-05:00",
           requiredShipAt: "2026-08-10T17:00:00-05:00",
+        },
+        {
+          type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
+          quantity: 3,
+          consumingOrderId: "SO-7001",
+          consumingOrderLineId: "SO-7001-L1",
         },
         {
           type: "SHORTFALL_CAUSE_UNDETERMINED",
