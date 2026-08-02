@@ -1,42 +1,35 @@
 import { describe, expect, it } from "vitest";
 
-import type { 
-        OrderPlacedEvent, 
-        InventoryPositionReportedEvent, 
-        InboundShipmentConfirmedEvent, 
-        InboundShipmentDelayedEvent
+import type {
+  OrderPlacedEvent,
+  InventoryPositionReportedEvent,
+  InboundShipmentConfirmedEvent,
+  InboundShipmentDelayedEvent,
 } from "../src/events/operational-event.js";
 
-import {
-  applyEvent,
-  EventApplicationError,
-} from "../src/state/apply-event.js";
+import { applyEvent, EventApplicationError } from "../src/state/apply-event.js";
 import {
   createEmptyOperationalState,
   inventoryPositionKey,
 } from "../src/state/operational-state.js";
 
+type EventOverrides<TEvent extends { payload: object }> = Omit<
+  Partial<TEvent>,
+  "payload"
+> & {
+  payload?: Partial<TEvent["payload"]>;
+};
 
-
-type OrderPlacedEventOverrides =
-  Omit<Partial<OrderPlacedEvent>, "payload"> & {
-    payload?: Partial<OrderPlacedEvent["payload"]>;
-  };
+type OrderPlacedEventOverrides = EventOverrides<OrderPlacedEvent>;
 
 type InventoryPositionReportedEventOverrides =
-  Omit<Partial<InventoryPositionReportedEvent>, "payload"> & {
-    payload?: Partial<InventoryPositionReportedEvent["payload"]>;
-  };
+  EventOverrides<InventoryPositionReportedEvent>;
 
 type InboundShipmentConfirmedEventOverrides =
-  Omit<Partial<InboundShipmentConfirmedEvent>, "payload"> & {
-    payload?: Partial<InboundShipmentConfirmedEvent["payload"]>;
-  };
+  EventOverrides<InboundShipmentConfirmedEvent>;
 
 type InboundShipmentDelayedEventOverrides =
-  Omit<Partial<InboundShipmentDelayedEvent>, "payload"> & {
-    payload?: Partial<InboundShipmentDelayedEvent["payload"]>;
-  };
+  EventOverrides<InboundShipmentDelayedEvent>;
 
 describe("applyEvent", () => {
   it("creates an open order from OrderPlaced", () => {
@@ -71,8 +64,8 @@ describe("applyEvent", () => {
       inventoryPositionReportedEvent({
         eventId: "evt-inventory-1",
         payload: {
-            usableQuantity: 2,
-        }
+          usableQuantity: 2,
+        },
       }),
     );
 
@@ -81,15 +74,13 @@ describe("applyEvent", () => {
       inventoryPositionReportedEvent({
         eventId: "evt-inventory-2",
         payload: {
-            usableQuantity: 5,
-        }
+          usableQuantity: 5,
+        },
       }),
     );
 
     expect(
-      state.inventoryPositions.get(
-        inventoryPositionKey("CHI", "BRG-440"),
-      ),
+      state.inventoryPositions.get(inventoryPositionKey("CHI", "BRG-440")),
     ).toEqual({
       warehouseId: "CHI",
       sku: "BRG-440",
@@ -131,13 +122,11 @@ describe("applyEvent", () => {
     const delayEvent = inboundShipmentDelayedEvent();
     applyEvent(state, delayEvent);
 
-    expect(
-      state.inboundShipments.get("IN-900")?.expectedAvailableAt,
-    ).toBe("2026-08-11T09:00:00-05:00");
+    expect(state.inboundShipments.get("IN-900")?.expectedAvailableAt).toBe(
+      "2026-08-11T09:00:00-05:00",
+    );
 
-    expect(
-      state.shipmentAvailabilityChanges.get("IN-900"),
-    ).toEqual({
+    expect(state.shipmentAvailabilityChanges.get("IN-900")).toEqual({
       shipmentId: "IN-900",
       previousExpectedAvailableAt: "2026-08-06T09:00:00-05:00",
       newExpectedAvailableAt: "2026-08-11T09:00:00-05:00",
@@ -177,9 +166,7 @@ describe("applyEvent", () => {
   it("rejects a delay for an unknown shipment", () => {
     const state = createEmptyOperationalState();
 
-    expect(() =>
-      applyEvent(state, inboundShipmentDelayedEvent()),
-    ).toThrow(
+    expect(() => applyEvent(state, inboundShipmentDelayedEvent())).toThrow(
       "Cannot delay unknown inbound shipment IN-900",
     );
   });
@@ -194,14 +181,11 @@ describe("applyEvent", () => {
         state,
         inboundShipmentDelayedEvent({
           payload: {
-            previousExpectedAvailableAt:
-              "2026-08-07T09:00:00-05:00",
-          }
+            previousExpectedAvailableAt: "2026-08-07T09:00:00-05:00",
+          },
         }),
       ),
-    ).toThrow(
-      /expected availability does not match/,
-    );
+    ).toThrow(/expected availability does not match/);
   });
 
   it("rejects a delay that does not move availability later", () => {
@@ -214,9 +198,8 @@ describe("applyEvent", () => {
         state,
         inboundShipmentDelayedEvent({
           payload: {
-            newExpectedAvailableAt:
-              "2026-08-05T09:00:00-05:00",
-          }
+            newExpectedAvailableAt: "2026-08-05T09:00:00-05:00",
+          },
         }),
       ),
     ).toThrow(/delay must move availability later/);
@@ -289,9 +272,7 @@ function inventoryPositionReportedEvent(
 function inboundShipmentConfirmedEvent(
   overrides: InboundShipmentConfirmedEventOverrides = {},
 ): InboundShipmentConfirmedEvent {
-
-	const defaultEvent: InboundShipmentConfirmedEvent = {
-
+  const defaultEvent: InboundShipmentConfirmedEvent = {
     eventId: "evt-shipment-confirmed-1",
     eventType: "InboundShipmentConfirmed",
     occurredAt: "2026-08-01T11:00:00-05:00",
@@ -311,12 +292,12 @@ function inboundShipmentConfirmedEvent(
     },
   };
 
-	return {
-		...defaultEvent,
-		...overrides,
-		payload: {
-			...defaultEvent.payload,
-			...overrides.payload,
+  return {
+    ...defaultEvent,
+    ...overrides,
+    payload: {
+      ...defaultEvent.payload,
+      ...overrides.payload,
     },
   };
 }
@@ -324,26 +305,26 @@ function inboundShipmentConfirmedEvent(
 function inboundShipmentDelayedEvent(
   overrides: InboundShipmentDelayedEventOverrides = {},
 ): InboundShipmentDelayedEvent {
-	const defaultEvent: InboundShipmentDelayedEvent = {
-		eventId: "evt-shipment-delay-1",
-		eventType: "InboundShipmentDelayed",
-		occurredAt: "2026-08-04T12:00:00-05:00",
-		receivedAt: "2026-08-04T12:00:01-05:00",
-		source: "TRANSPORTATION_INTEGRATION",
-		payload: {
-			shipmentId: "IN-900",
-			previousExpectedAvailableAt: "2026-08-06T09:00:00-05:00",
-			newExpectedAvailableAt: "2026-08-11T09:00:00-05:00",
-			reason: "Supplier production delay",
-		},
-	};
+  const defaultEvent: InboundShipmentDelayedEvent = {
+    eventId: "evt-shipment-delay-1",
+    eventType: "InboundShipmentDelayed",
+    occurredAt: "2026-08-04T12:00:00-05:00",
+    receivedAt: "2026-08-04T12:00:01-05:00",
+    source: "TRANSPORTATION_INTEGRATION",
+    payload: {
+      shipmentId: "IN-900",
+      previousExpectedAvailableAt: "2026-08-06T09:00:00-05:00",
+      newExpectedAvailableAt: "2026-08-11T09:00:00-05:00",
+      reason: "Supplier production delay",
+    },
+  };
 
-	return {
-		...defaultEvent,
-		...overrides,
-		payload: {
-			...defaultEvent.payload,
-			...overrides.payload,
-		},
-	};
+  return {
+    ...defaultEvent,
+    ...overrides,
+    payload: {
+      ...defaultEvent.payload,
+      ...overrides.payload,
+    },
+  };
 }

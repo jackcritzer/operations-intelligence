@@ -1,11 +1,11 @@
 import type { OperationalEvent } from "../events/operational-event.js";
 import {
-    inventoryPositionKey,
-    type OperationalState,
-    type InboundShipment,
-    type InventoryPosition,
-    type ShipmentAvailabilityChange,
-    type CustomerOrder,
+  inventoryPositionKey,
+  type OperationalState,
+  type InboundShipment,
+  type InventoryPosition,
+  type ShipmentAvailabilityChange,
+  type CustomerOrder,
 } from "./operational-state.js";
 
 export class EventApplicationError extends Error {
@@ -19,40 +19,40 @@ export function applyEvent(
   state: OperationalState,
   event: OperationalEvent,
 ): void {
-	// prevent re-applying the same event
-	if (state.processedEventIds.has(event.eventId)) {
- 	 return;
-	}
+  // prevent re-applying the same event
+  if (state.processedEventIds.has(event.eventId)) {
+    return;
+  }
 
-	switch (event.eventType) {
-		case "OrderPlaced":
-			applyOrderPlaced(state, event);
-			break;
+  switch (event.eventType) {
+    case "OrderPlaced":
+      applyOrderPlaced(state, event);
+      break;
 
-		case "InventoryPositionReported":
-			applyInventoryPositionReported(state, event);
-			break;
+    case "InventoryPositionReported":
+      applyInventoryPositionReported(state, event);
+      break;
 
-		case "InboundShipmentConfirmed":
-			applyInboundShipmentConfirmed(state, event);
-			break;
+    case "InboundShipmentConfirmed":
+      applyInboundShipmentConfirmed(state, event);
+      break;
 
-		case "InboundShipmentDelayed":
-			applyInboundShipmentDelayed(state, event);
-			break;
+    case "InboundShipmentDelayed":
+      applyInboundShipmentDelayed(state, event);
+      break;
 
-		default:
-			assertNever(event);
-	}
+    default:
+      assertNever(event);
+  }
 
-	state.processedEventIds.add(event.eventId);
+  state.processedEventIds.add(event.eventId);
 }
 
 function applyOrderPlaced(
-	state: OperationalState,
-	event: Extract<OperationalEvent, { eventType: "OrderPlaced" }>,
+  state: OperationalState,
+  event: Extract<OperationalEvent, { eventType: "OrderPlaced" }>,
 ): void {
-	if (event.payload.lines.length === 0) {
+  if (event.payload.lines.length === 0) {
     throw new EventApplicationError(
       `Order ${event.payload.orderId} must contain at least one line`,
     );
@@ -64,48 +64,41 @@ function applyOrderPlaced(
     );
   }
 
-	validatePositiveQuantities(
+  validatePositiveQuantities(
     event.payload.lines.map((line) => ({
       name: `Order line ${line.orderLineId}`,
       quantity: line.quantity,
     })),
   );
 
-	const newOrder: CustomerOrder = {
-		orderId: event.payload.orderId,
-		placedAt: event.payload.placedAt,
-		requiredShipAt: event.payload.requiredShipAt,
-		status: "OPEN",
-		lines: event.payload.lines.map((line) => ({
-			orderLineId: line.orderLineId,
-			sku: line.sku,
-			quantity: line.quantity,
-			fulfillmentWarehouseId: line.fulfillmentWarehouseId,
-		})),
-	};
+  const newOrder: CustomerOrder = {
+    orderId: event.payload.orderId,
+    placedAt: event.payload.placedAt,
+    requiredShipAt: event.payload.requiredShipAt,
+    status: "OPEN",
+    lines: event.payload.lines.map((line) => ({
+      orderLineId: line.orderLineId,
+      sku: line.sku,
+      quantity: line.quantity,
+      fulfillmentWarehouseId: line.fulfillmentWarehouseId,
+    })),
+  };
 
-	state.orders.set(newOrder.orderId, newOrder);
+  state.orders.set(newOrder.orderId, newOrder);
 }
 
 function applyInventoryPositionReported(
-	state: OperationalState,
-	event: Extract<OperationalEvent, { eventType: "InventoryPositionReported" }>,
+  state: OperationalState,
+  event: Extract<OperationalEvent, { eventType: "InventoryPositionReported" }>,
 ): void {
-
-  if (state.inventoryPositions.has(inventoryPositionKey(event.payload.warehouseId, event.payload.sku))) {
+  if (event.payload.reservedQuantity > event.payload.usableQuantity) {
     throw new EventApplicationError(
-      `Inventory position for ${event.payload.warehouseId}:${event.payload.sku} already exists`,
+      `Reserved quantity cannot exceed usable quantity for ` +
+        `${event.payload.warehouseId}:${event.payload.sku}`,
     );
   }
 
-	if (event.payload.reservedQuantity > event.payload.usableQuantity) {
-		throw new EventApplicationError(
-		`Reserved quantity cannot exceed usable quantity for ` +
-			`${event.payload.warehouseId}:${event.payload.sku}`,
-		);
-	}
-
-	validateNonNegativeQuantities([
+  validateNonNegativeQuantities([
     {
       name: "Usable quantity",
       quantity: event.payload.usableQuantity,
@@ -120,108 +113,114 @@ function applyInventoryPositionReported(
     },
   ]);
 
-	const position: InventoryPosition = {
-		warehouseId: event.payload.warehouseId,
-		sku: event.payload.sku,
-		usableQuantity: event.payload.usableQuantity,
-		reservedQuantity: event.payload.reservedQuantity,
-		unusableQuantity: event.payload.unusableQuantity,
-		reportedAt: event.occurredAt,
-	}
+  const position: InventoryPosition = {
+    warehouseId: event.payload.warehouseId,
+    sku: event.payload.sku,
+    usableQuantity: event.payload.usableQuantity,
+    reservedQuantity: event.payload.reservedQuantity,
+    unusableQuantity: event.payload.unusableQuantity,
+    reportedAt: event.occurredAt,
+  };
 
-	state.inventoryPositions.set(
-		inventoryPositionKey(position.warehouseId, position.sku),
-		position,
-	);
+  state.inventoryPositions.set(
+    inventoryPositionKey(position.warehouseId, position.sku),
+    position,
+  );
 }
 
 function applyInboundShipmentConfirmed(
-	state: OperationalState,
-	event: Extract<OperationalEvent, { eventType: "InboundShipmentConfirmed" }>,
+  state: OperationalState,
+  event: Extract<OperationalEvent, { eventType: "InboundShipmentConfirmed" }>,
 ): void {
-
   if (state.inboundShipments.has(event.payload.shipmentId)) {
     throw new EventApplicationError(
       `Inbound shipment ${event.payload.shipmentId} already exists`,
     );
   }
 
-	if (event.payload.lines.length === 0) {
-		throw new EventApplicationError(
-		`Inbound shipment ${event.payload.shipmentId} must contain at least one line`,
-		);
-	}
+  if (event.payload.lines.length === 0) {
+    throw new EventApplicationError(
+      `Inbound shipment ${event.payload.shipmentId} must contain at least one line`,
+    );
+  }
 
-	validatePositiveQuantities(
-		event.payload.lines.map((line) => ({
-		name: `Shipment line ${line.shipmentLineId}`,
-		quantity: line.quantity,
-		})),
-	);
+  validatePositiveQuantities(
+    event.payload.lines.map((line) => ({
+      name: `Shipment line ${line.shipmentLineId}`,
+      quantity: line.quantity,
+    })),
+  );
 
-	const shipment: InboundShipment = {
-		shipmentId: event.payload.shipmentId,
-		destinationWarehouseId: event.payload.destinationWarehouseId,
-		expectedAvailableAt: event.payload.expectedAvailableAt,
-		status: "CONFIRMED",
-		lines: event.payload.lines.map((line) => ({
-			shipmentLineId: line.shipmentLineId,
-			sku: line.sku,
-			quantity: line.quantity,
-		})),
-	};
+  const shipment: InboundShipment = {
+    shipmentId: event.payload.shipmentId,
+    destinationWarehouseId: event.payload.destinationWarehouseId,
+    expectedAvailableAt: event.payload.expectedAvailableAt,
+    status: "CONFIRMED",
+    lines: event.payload.lines.map((line) => ({
+      shipmentLineId: line.shipmentLineId,
+      sku: line.sku,
+      quantity: line.quantity,
+    })),
+  };
 
-	state.inboundShipments.set(shipment.shipmentId, shipment);
+  state.inboundShipments.set(shipment.shipmentId, shipment);
 }
 
 function applyInboundShipmentDelayed(
-	state: OperationalState,
-	event: Extract<OperationalEvent, { eventType: "InboundShipmentDelayed" }>,
+  state: OperationalState,
+  event: Extract<OperationalEvent, { eventType: "InboundShipmentDelayed" }>,
 ): void {
-	const shipment = state.inboundShipments.get(event.payload.shipmentId);
-	if (!shipment) {
-		throw new EventApplicationError(
-			`Cannot delay unknown inbound shipment ${event.payload.shipmentId}`,
-		);
-	}
+  const shipment = state.inboundShipments.get(event.payload.shipmentId);
+  if (!shipment) {
+    throw new EventApplicationError(
+      `Cannot delay unknown inbound shipment ${event.payload.shipmentId}`,
+    );
+  }
 
-	if (shipment.expectedAvailableAt !== event.payload.previousExpectedAvailableAt) {
-		throw new EventApplicationError(
+  if (
+    shipment.expectedAvailableAt !== event.payload.previousExpectedAvailableAt
+  ) {
+    throw new EventApplicationError(
       `Shipment ${shipment.shipmentId} expected availability does not match ` +
         `the delay event's previous value`,
     );
-	}
+  }
 
-	if (
-    parseTimestamp(event.payload.newExpectedAvailableAt, "New expected availability") <=
-    parseTimestamp(event.payload.previousExpectedAvailableAt, "Previous expected availability")
+  if (
+    parseTimestamp(
+      event.payload.newExpectedAvailableAt,
+      "New expected availability",
+    ) <=
+    parseTimestamp(
+      event.payload.previousExpectedAvailableAt,
+      "Previous expected availability",
+    )
   ) {
     throw new EventApplicationError(
       `Shipment ${shipment.shipmentId} delay must move availability later`,
     );
   }
 
-	const updatedShipment: InboundShipment = {
-		...shipment,
-		expectedAvailableAt: event.payload.newExpectedAvailableAt,
-	};
+  const updatedShipment: InboundShipment = {
+    ...shipment,
+    expectedAvailableAt: event.payload.newExpectedAvailableAt,
+  };
 
-	state.inboundShipments.set(updatedShipment.shipmentId, updatedShipment);
+  state.inboundShipments.set(updatedShipment.shipmentId, updatedShipment);
 
-	const change: ShipmentAvailabilityChange = {
-		shipmentId: shipment.shipmentId,
-		previousExpectedAvailableAt:
-			event.payload.previousExpectedAvailableAt,
-		newExpectedAvailableAt: event.payload.newExpectedAvailableAt,
-		changedAt: event.occurredAt,
-	};
+  const change: ShipmentAvailabilityChange = {
+    shipmentId: shipment.shipmentId,
+    previousExpectedAvailableAt: event.payload.previousExpectedAvailableAt,
+    newExpectedAvailableAt: event.payload.newExpectedAvailableAt,
+    changedAt: event.occurredAt,
+  };
 
-	if (event.payload.reason !== undefined) {
-		change.reason = event.payload.reason;
-	}
+  if (event.payload.reason !== undefined) {
+    change.reason = event.payload.reason;
+  }
 
-	state.shipmentAvailabilityChanges.set(shipment.shipmentId, change);
-}	
+  state.shipmentAvailabilityChanges.set(shipment.shipmentId, change);
+}
 
 function validatePositiveQuantities(
   values: Array<{ name: string; quantity: number }>,
@@ -247,8 +246,6 @@ function validateNonNegativeQuantities(
   }
 }
 
-
-
 function assertNever(value: never): never {
   throw new EventApplicationError(
     `Unsupported event: ${JSON.stringify(value)}`,
@@ -259,9 +256,7 @@ function parseTimestamp(value: string, fieldName: string): number {
   const parsed = Date.parse(value);
 
   if (Number.isNaN(parsed)) {
-    throw new EventApplicationError(
-      `${fieldName} must be a valid timestamp`,
-    );
+    throw new EventApplicationError(`${fieldName} must be a valid timestamp`);
   }
 
   return parsed;

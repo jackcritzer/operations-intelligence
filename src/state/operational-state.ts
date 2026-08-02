@@ -50,10 +50,7 @@ export interface OperationalState {
   orders: Map<string, CustomerOrder>;
   inventoryPositions: Map<string, InventoryPosition>;
   inboundShipments: Map<string, InboundShipment>;
-  shipmentAvailabilityChanges: Map<
-    string,
-    ShipmentAvailabilityChange
-  >;
+  shipmentAvailabilityChanges: Map<string, ShipmentAvailabilityChange>;
   processedEventIds: Set<string>;
 }
 
@@ -67,9 +64,6 @@ export function createEmptyOperationalState(): OperationalState {
   };
 }
 
-export function inventoryPositionKey(
-  warehouseId: string,
-  sku: string,
-): string {
+export function inventoryPositionKey(warehouseId: string, sku: string): string {
   return `${warehouseId}:${sku}`;
 }

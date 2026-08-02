@@ -1,6 +1,4 @@
-export type FulfillmentStatus =
-  | "FULFILLABLE"
-  | "BLOCKED";
+export type FulfillmentStatus = "FULFILLABLE" | "BLOCKED";
 
 export interface OrderFulfillmentAssessment {
   orderId: string;
@@ -8,8 +6,6 @@ export interface OrderFulfillmentAssessment {
   status: FulfillmentStatus;
   lines: OrderLineFulfillmentAssessment[];
 }
-
-
 
 export interface OrderLineFulfillmentAssessment {
   orderLineId: string;
@@ -24,22 +20,8 @@ export interface OrderLineFulfillmentAssessment {
   triggeringChanges: TriggeringChange[];
 }
 
-export interface FulfillmentLineAssessment {
-    orderLineId: string;
-    sku: string;
-    fulfillmentWarehouseId: string;
-    requiredQuantity: number;
-    projectedAllocation: number;
-    projectedShortfall: number;
-    status: FulfillmentStatus;
-    supplyContributions: SupplyContribution[];
-    blockingConditions: BlockingCondition[];
-    triggeringChanges: TriggeringChange[];
-}
-
 export type SupplyContribution =
-  | OnHandSupplyContribution
-  | InboundSupplyContribution;
+  OnHandSupplyContribution | InboundSupplyContribution;
 
 export interface OnHandSupplyContribution {
   type: "ON_HAND";
@@ -59,8 +41,7 @@ export interface InboundSupplyContribution {
 }
 
 export type BlockingCondition =
-  | LateInboundSupplyCondition
-  | HigherPriorityDemandCondition;
+  LateInboundSupplyCondition | HigherPriorityDemandCondition;
 
 export interface LateInboundSupplyCondition {
   type: "INBOUND_AVAILABLE_TOO_LATE";
@@ -76,8 +57,7 @@ export interface HigherPriorityDemandCondition {
   quantity: number;
 }
 
-export type TriggeringChange =
-  ShipmentDelayTrigger;
+export type TriggeringChange = ShipmentDelayTrigger;
 
 export interface ShipmentDelayTrigger {
   type: "SHIPMENT_DELAYED";

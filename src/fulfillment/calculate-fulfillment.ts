@@ -5,10 +5,10 @@ import type {
 import type {
   OrderFulfillmentAssessment,
   SupplyContribution,
-  FulfillmentLineAssessment,
   BlockingCondition,
   TriggeringChange,
   ShipmentDelayTrigger,
+  OrderLineFulfillmentAssessment,
 } from "./fulfillment-result.js";
 
 interface DemandItem {
@@ -36,9 +36,7 @@ export function calculateFulfillment(
   return buildOrderAssessments(allocations, state);
 }
 
-function collectDemandItems(
-  state: OperationalState,
-): DemandItem[] {
+function collectDemandItems(state: OperationalState): DemandItem[] {
   return [...state.orders.values()]
     .filter((order) => order.status === "OPEN")
     .flatMap(toDemandItems);
@@ -58,15 +56,10 @@ function toDemandItems(order: CustomerOrder): DemandItem[] {
 
 // Compare two demand items to determine their priority for fulfillment allocation.
 // Compare by requiredShipAt, then placedAt, then orderId, then orderLineId.
-function compareDemandPriority(
-  left: DemandItem,
-  right: DemandItem,
-): number {
+function compareDemandPriority(left: DemandItem, right: DemandItem): number {
   return (
-    Date.parse(left.requiredShipAt) -
-      Date.parse(right.requiredShipAt) ||
-    Date.parse(left.placedAt) -
-      Date.parse(right.placedAt) ||
+    Date.parse(left.requiredShipAt) - Date.parse(right.requiredShipAt) ||
+    Date.parse(left.placedAt) - Date.parse(right.placedAt) ||
     left.orderId.localeCompare(right.orderId) ||
     left.orderLineId.localeCompare(right.orderLineId)
   );
@@ -91,19 +84,11 @@ interface InboundSupplyItem {
 
 type SupplyItem = OnHandSupplyItem | InboundSupplyItem;
 
-function collectSupplyItems(
-  state: OperationalState,
-): SupplyItem[] {
-  return [
-    ...collectOnHandSupply(state),
-    ...collectInboundSupply(state),
-  ];
+function collectSupplyItems(state: OperationalState): SupplyItem[] {
+  return [...collectOnHandSupply(state), ...collectInboundSupply(state)];
 }
 
-
-function collectOnHandSupply(
-  state: OperationalState,
-): OnHandSupplyItem[] {
+function collectOnHandSupply(state: OperationalState): OnHandSupplyItem[] {
   return [...state.inventoryPositions.values()]
     .map((position) => ({
       type: "ON_HAND" as const,
@@ -117,22 +102,19 @@ function collectOnHandSupply(
     .filter((supply) => supply.remainingQuantity > 0);
 }
 
-function collectInboundSupply(
-  state: OperationalState,
-): InboundSupplyItem[] {
-  return [...state.inboundShipments.values()].flatMap(
-    (shipment) =>
-      shipment.lines
-        .map((line) => ({
-          type: "INBOUND" as const,
-          shipmentId: shipment.shipmentId,
-          shipmentLineId: line.shipmentLineId,
-          warehouseId: shipment.destinationWarehouseId,
-          sku: line.sku,
-          expectedAvailableAt: shipment.expectedAvailableAt,
-          remainingQuantity: line.quantity,
-        }))
-        .filter((supply) => supply.remainingQuantity > 0),
+function collectInboundSupply(state: OperationalState): InboundSupplyItem[] {
+  return [...state.inboundShipments.values()].flatMap((shipment) =>
+    shipment.lines
+      .map((line) => ({
+        type: "INBOUND" as const,
+        shipmentId: shipment.shipmentId,
+        shipmentLineId: line.shipmentLineId,
+        warehouseId: shipment.destinationWarehouseId,
+        sku: line.sku,
+        expectedAvailableAt: shipment.expectedAvailableAt,
+        remainingQuantity: line.quantity,
+      }))
+      .filter((supply) => supply.remainingQuantity > 0),
   );
 }
 
@@ -184,9 +166,7 @@ function allocateDemandItem(
     supply.remainingQuantity -= allocatedQuantity;
     remainingDemand -= allocatedQuantity;
 
-    contributions.push(
-      toSupplyContribution(supply, allocatedQuantity),
-    );
+    contributions.push(toSupplyContribution(supply, allocatedQuantity));
   }
 
   return {
@@ -196,10 +176,7 @@ function allocateDemandItem(
   };
 }
 
-function isSupplyEligible(
-  supply: SupplyItem,
-  demand: DemandItem,
-): boolean {
+function isSupplyEligible(supply: SupplyItem, demand: DemandItem): boolean {
   if (
     supply.sku !== demand.sku ||
     supply.warehouseId !== demand.fulfillmentWarehouseId ||
@@ -213,15 +190,11 @@ function isSupplyEligible(
   }
 
   return (
-    Date.parse(supply.expectedAvailableAt) <=
-    Date.parse(demand.requiredShipAt)
+    Date.parse(supply.expectedAvailableAt) <= Date.parse(demand.requiredShipAt)
   );
 }
 
-function compareSupplyPriority(
-  left: SupplyItem,
-  right: SupplyItem,
-): number {
+function compareSupplyPriority(left: SupplyItem, right: SupplyItem): number {
   if (left.type !== right.type) {
     return left.type === "ON_HAND" ? -1 : 1;
   }
@@ -265,7 +238,7 @@ function toSupplyContribution(
 function toLineAssessment(
   allocation: DemandAllocation,
   state: OperationalState,
-): FulfillmentLineAssessment {
+): OrderLineFulfillmentAssessment {
   const projectedAllocation = allocation.contributions.reduce(
     (total, contribution) => total + contribution.quantity,
     0,
@@ -289,8 +262,7 @@ function toLineAssessment(
   return {
     orderLineId: allocation.demand.orderLineId,
     sku: allocation.demand.sku,
-    fulfillmentWarehouseId:
-      allocation.demand.fulfillmentWarehouseId,
+    fulfillmentWarehouseId: allocation.demand.fulfillmentWarehouseId,
     requiredQuantity: allocation.demand.requiredQuantity,
     projectedAllocation,
     projectedShortfall,
@@ -305,16 +277,11 @@ function buildOrderAssessments(
   allocations: DemandAllocation[],
   state: OperationalState,
 ): OrderFulfillmentAssessment[] {
-  const assessmentsByOrderId = new Map<
-    string,
-    OrderFulfillmentAssessment
-  >();
+  const assessmentsByOrderId = new Map<string, OrderFulfillmentAssessment>();
 
   for (const allocation of allocations) {
     const lineAssessment = toLineAssessment(allocation, state);
-    const existingOrder = assessmentsByOrderId.get(
-      allocation.demand.orderId,
-    );
+    const existingOrder = assessmentsByOrderId.get(allocation.demand.orderId);
 
     if (existingOrder) {
       existingOrder.lines.push(lineAssessment);
@@ -336,7 +303,6 @@ function buildOrderAssessments(
 
   return [...assessmentsByOrderId.values()];
 }
-
 
 function toBlockingConditions(
   allocation: DemandAllocation,
@@ -382,9 +348,7 @@ function toTriggeringChanges(
       continue;
     }
 
-    const change = state.shipmentAvailabilityChanges.get(
-      supply.shipmentId,
-    );
+    const change = state.shipmentAvailabilityChanges.get(supply.shipmentId);
 
     if (!change) {
       continue;
@@ -393,14 +357,13 @@ function toTriggeringChanges(
     const shipmentDelayTrigger: ShipmentDelayTrigger = {
       type: "SHIPMENT_DELAYED",
       shipmentId: supply.shipmentId,
-      previousExpectedAvailableAt:
-        change.previousExpectedAvailableAt,
+      previousExpectedAvailableAt: change.previousExpectedAvailableAt,
       newExpectedAvailableAt: change.newExpectedAvailableAt,
       changedAt: change.changedAt,
     };
 
     if (change.reason !== undefined) {
-        shipmentDelayTrigger.reason = change.reason;
+      shipmentDelayTrigger.reason = change.reason;
     }
 
     changes.push(shipmentDelayTrigger);
