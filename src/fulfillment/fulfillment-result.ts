@@ -41,7 +41,9 @@ export interface InboundSupplyContribution {
 }
 
 export type BlockingCondition =
-  LateInboundSupplyCondition | HigherPriorityDemandCondition | UndeterminedShortfallCondition;
+  | LateInboundSupplyCondition
+  | HigherPriorityDemandCondition
+  | UndeterminedShortfallCondition;
 
 export interface LateInboundSupplyCondition {
   type: "INBOUND_AVAILABLE_TOO_LATE";

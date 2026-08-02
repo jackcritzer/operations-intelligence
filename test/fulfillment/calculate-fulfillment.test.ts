@@ -475,13 +475,12 @@ describe("calculateFulfillment", () => {
                 quantity: 4,
                 consumingOrderId: "SO-5002",
                 consumingOrderLineId: "SO-5002-L1",
-              }
+              },
             ],
             triggeringChanges: [],
           },
         ],
       },
-      
     ]);
   });
 
@@ -766,7 +765,7 @@ describe("calculateFulfillment", () => {
             blockingConditions: [
               {
                 type: "SHORTFALL_CAUSE_UNDETERMINED",
-                quantity: 4
+                quantity: 4,
               },
             ],
             triggeringChanges: [],
@@ -903,5 +902,4 @@ describe("calculateFulfillment", () => {
       ),
     ).toBe(blockedLine?.projectedShortfall);
   });
-
 });
