@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "scenario": "tsx src/scenarios/shipment-delay-blocks-order.ts"
+    "scenario": "tsx src/scenarios/cli.ts"
   },
   "repository": {
     "type": "git",
