@@ -55,6 +55,8 @@ export interface LateInboundSupplyCondition {
 export interface HigherPriorityDemandCondition {
   type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND";
   quantity: number;
+  consumingOrderId: string;
+  consumingOrderLineId: string;
 }
 
 export type TriggeringChange = ShipmentDelayTrigger;

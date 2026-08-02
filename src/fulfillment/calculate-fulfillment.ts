@@ -70,6 +70,7 @@ interface OnHandSupplyItem {
   warehouseId: string;
   sku: string;
   remainingQuantity: number;
+  allocations: SupplyAllocationRecord[];
 }
 
 interface InboundSupplyItem {
@@ -80,9 +81,16 @@ interface InboundSupplyItem {
   sku: string;
   expectedAvailableAt: string;
   remainingQuantity: number;
+  allocations: SupplyAllocationRecord[];
 }
 
 type SupplyItem = OnHandSupplyItem | InboundSupplyItem;
+
+export interface SupplyAllocationRecord {
+  orderId: string;
+  orderLineId: string;
+  quantity: number;
+}
 
 function collectSupplyItems(state: OperationalState): SupplyItem[] {
   return [...collectOnHandSupply(state), ...collectInboundSupply(state)];
@@ -98,6 +106,7 @@ function collectOnHandSupply(state: OperationalState): OnHandSupplyItem[] {
         0,
         position.usableQuantity - position.reservedQuantity,
       ),
+      allocations: [],
     }))
     .filter((supply) => supply.remainingQuantity > 0);
 }
@@ -113,6 +122,7 @@ function collectInboundSupply(state: OperationalState): InboundSupplyItem[] {
         sku: line.sku,
         expectedAvailableAt: shipment.expectedAvailableAt,
         remainingQuantity: line.quantity,
+        allocations: [],
       }))
       .filter((supply) => supply.remainingQuantity > 0),
   );
@@ -122,6 +132,7 @@ interface DemandAllocation {
   demand: DemandItem;
   contributions: SupplyContribution[];
   lateInboundSupply: InboundSupplyItem[];
+  higherPriorityAllocations: SupplyAllocationRecord[];
 }
 
 function allocateDemandItem(
@@ -134,8 +145,11 @@ function allocateDemandItem(
   const matchingSupply = supplyItems.filter(
     (supply) =>
       supply.sku === demand.sku &&
-      supply.warehouseId === demand.fulfillmentWarehouseId &&
-      supply.remainingQuantity > 0,
+      supply.warehouseId === demand.fulfillmentWarehouseId,
+  );
+
+  const higherPriorityAllocations = matchingSupply.flatMap((supply) =>
+    supply.allocations.map((record) => ({ ...record })),
   );
 
   const lateInboundSupply = matchingSupply.filter(
@@ -143,7 +157,11 @@ function allocateDemandItem(
       supply.type === "INBOUND" &&
       Date.parse(supply.expectedAvailableAt) >
         Date.parse(demand.requiredShipAt),
-  );
+  )
+  .map((supply) => ({
+    ...supply,
+    allocations: supply.allocations.map((record) => ({ ...record })),
+  }));
 
   const eligibleSupply = supplyItems
     .filter((supply) => isSupplyEligible(supply, demand))
@@ -163,6 +181,12 @@ function allocateDemandItem(
       continue;
     }
 
+    supply.allocations.push({
+      orderId: demand.orderId,
+      orderLineId: demand.orderLineId,
+      quantity: allocatedQuantity,
+    });
+
     supply.remainingQuantity -= allocatedQuantity;
     remainingDemand -= allocatedQuantity;
 
@@ -173,6 +197,7 @@ function allocateDemandItem(
     demand,
     contributions,
     lateInboundSupply,
+    higherPriorityAllocations,
   };
 }
 
@@ -328,6 +353,26 @@ function toBlockingConditions(
       quantity: relevantQuantity,
       expectedAvailableAt: supply.expectedAvailableAt,
       requiredShipAt: allocation.demand.requiredShipAt,
+    });
+
+    unexplainedShortfall -= relevantQuantity;
+  }
+
+  for (const priorAllocation of allocation.higherPriorityAllocations) {
+    if (unexplainedShortfall === 0) {
+      break;
+    }
+
+    const relevantQuantity = Math.min(
+      unexplainedShortfall,
+      priorAllocation.quantity,
+    );
+
+    conditions.push({
+      type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
+      quantity: relevantQuantity,
+      consumingOrderId: priorAllocation.orderId,
+      consumingOrderLineId: priorAllocation.orderLineId,
     });
 
     unexplainedShortfall -= relevantQuantity;

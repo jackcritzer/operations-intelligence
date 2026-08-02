@@ -245,3 +245,126 @@ describe("calculateFulfillment", () => {
     ]);
   });
 });
+
+it("explains when higher-priority demand consumes supply needed by a later order", () => {
+  const state = createEmptyOperationalState();
+
+  applyEvent(state, {
+    eventId: "event-inventory-1",
+    eventType: "InventoryPositionReported",
+    occurredAt: "2026-08-01T08:00:00-05:00",
+    receivedAt: "2026-08-01T08:00:01-05:00",
+    source: "WMS",
+    payload: {
+      warehouseId: "CHI",
+      sku: "BRG-440",
+      usableQuantity: 6,
+      reservedQuantity: 0,
+      unusableQuantity: 0,
+    },
+  });
+
+  applyEvent(state, {
+    eventId: "event-order-3001",
+    eventType: "OrderPlaced",
+    occurredAt: "2026-08-01T09:00:00-05:00",
+    receivedAt: "2026-08-01T09:00:01-05:00",
+    source: "ERP",
+    payload: {
+      orderId: "SO-3001",
+      placedAt: "2026-08-01T09:00:00-05:00",
+      requiredShipAt: "2026-08-08T17:00:00-05:00",
+      lines: [
+        {
+          orderLineId: "SO-3001-L1",
+          sku: "BRG-440",
+          quantity: 4,
+          fulfillmentWarehouseId: "CHI",
+        },
+      ],
+    },
+  });
+
+  applyEvent(state, {
+    eventId: "event-order-3002",
+    eventType: "OrderPlaced",
+    occurredAt: "2026-08-01T10:00:00-05:00",
+    receivedAt: "2026-08-01T10:00:01-05:00",
+    source: "ERP",
+    payload: {
+      orderId: "SO-3002",
+      placedAt: "2026-08-01T10:00:00-05:00",
+      requiredShipAt: "2026-08-08T17:00:00-05:00",
+      lines: [
+        {
+          orderLineId: "SO-3002-L1",
+          sku: "BRG-440",
+          quantity: 4,
+          fulfillmentWarehouseId: "CHI",
+        },
+      ],
+    },
+  });
+
+  expect(calculateFulfillment(state)).toEqual([
+    {
+      orderId: "SO-3001",
+      requiredShipAt: "2026-08-08T17:00:00-05:00",
+      status: "FULFILLABLE",
+      lines: [
+        {
+          orderLineId: "SO-3001-L1",
+          sku: "BRG-440",
+          fulfillmentWarehouseId: "CHI",
+          requiredQuantity: 4,
+          projectedAllocation: 4,
+          projectedShortfall: 0,
+          status: "FULFILLABLE",
+          supplyContributions: [
+            {
+              type: "ON_HAND",
+              warehouseId: "CHI",
+              sku: "BRG-440",
+              quantity: 4,
+            },
+          ],
+          blockingConditions: [],
+          triggeringChanges: [],
+        },
+      ],
+    },
+    {
+      orderId: "SO-3002",
+      requiredShipAt: "2026-08-08T17:00:00-05:00",
+      status: "BLOCKED",
+      lines: [
+        {
+          orderLineId: "SO-3002-L1",
+          sku: "BRG-440",
+          fulfillmentWarehouseId: "CHI",
+          requiredQuantity: 4,
+          projectedAllocation: 2,
+          projectedShortfall: 2,
+          status: "BLOCKED",
+          supplyContributions: [
+            {
+              type: "ON_HAND",
+              warehouseId: "CHI",
+              sku: "BRG-440",
+              quantity: 2,
+            },
+          ],
+          blockingConditions: [
+            {
+              type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
+              quantity: 2,
+              consumingOrderId: "SO-3001",
+              consumingOrderLineId: "SO-3001-L1",
+            },
+          ],
+          triggeringChanges: [],
+        },
+      ],
+    },
+  ]);
+});
