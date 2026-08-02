@@ -90,16 +90,15 @@ This scenario will become an executable specification and integration test.
 
 ## Planned developer experience
 
-The first runnable version will provide a deterministic scenario runner.
+The first runnable version includes a deterministic scenario runner.
 
-A developer will be able to:
+Run the included shipment-delay scenario with:
 
-1. start the application and database;
-2. load a named business scenario;
-3. apply business events one at a time;
-4. query the operational state after any event;
-5. observe an order transition from fulfillable to blocked;
-6. inspect the explanation for that transition.
+```bash
+npm run scenario
+```
+
+The runner applies each business event in order, recalculates fulfillment after every event, and prints order status transitions with their blockers and triggering changes. This deliberately exposes every intermediate state rather than skipping directly to a curated before-and-after result.
 
 A later HTTP interface will simulate events arriving from upstream systems.
 
@@ -127,18 +126,18 @@ Thirty incoming units now arrive after the order's required ship date.
 
 ## Current status
 
-The project is currently in domain discovery and executable-scenario definition.
+The in-memory fulfillment core for the first vertical slice is implemented.
 
-Current work includes:
+The system currently:
 
-* understanding the industrial distribution workflow;
-* identifying upstream systems and their responsibilities;
-* tracing one product from supplier to customer;
-* defining the first operational user and decision;
-* documenting the rules that determine whether an order is fulfillable;
-* resolving the assumptions required for the first scenario.
+* applies order, inventory, inbound-shipment, and shipment-delay events to operational state;
+* allocates on-hand and timely inbound supply by deterministic demand priority;
+* reports order- and line-level fulfillment status, projected allocation, and shortfall;
+* explains late inbound supply, supply consumed by higher-priority demand, and undetermined shortfalls;
+* preserves shipment delays as triggering changes when they explain a blocker;
+* runs a deterministic shipment-delay scenario event by event.
 
-Implementation will begin after the first scenario and its business rules are sufficiently precise.
+PostgreSQL persistence, external event ingestion, and an HTTP API are intentionally deferred until after this engine checkpoint.
 
 ## Documentation
 
