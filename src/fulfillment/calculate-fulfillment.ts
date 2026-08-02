@@ -337,6 +337,26 @@ function toBlockingConditions(
   let unexplainedShortfall = projectedShortfall;
   const conditions: BlockingCondition[] = [];
 
+  for (const priorAllocation of allocation.higherPriorityAllocations) {
+    if (unexplainedShortfall === 0) {
+      break;
+    }
+
+    const relevantQuantity = Math.min(
+      unexplainedShortfall,
+      priorAllocation.quantity,
+    );
+
+    conditions.push({
+      type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
+      quantity: relevantQuantity,
+      consumingOrderId: priorAllocation.orderId,
+      consumingOrderLineId: priorAllocation.orderLineId,
+    });
+
+    unexplainedShortfall -= relevantQuantity;
+  }
+
   for (const supply of allocation.lateInboundSupply) {
     if (unexplainedShortfall === 0) {
       break;
@@ -354,26 +374,6 @@ function toBlockingConditions(
       quantity: relevantQuantity,
       expectedAvailableAt: supply.expectedAvailableAt,
       requiredShipAt: allocation.demand.requiredShipAt,
-    });
-
-    unexplainedShortfall -= relevantQuantity;
-  }
-
-  for (const priorAllocation of allocation.higherPriorityAllocations) {
-    if (unexplainedShortfall === 0) {
-      break;
-    }
-
-    const relevantQuantity = Math.min(
-      unexplainedShortfall,
-      priorAllocation.quantity,
-    );
-
-    conditions.push({
-      type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
-      quantity: relevantQuantity,
-      consumingOrderId: priorAllocation.orderId,
-      consumingOrderLineId: priorAllocation.orderLineId,
     });
 
     unexplainedShortfall -= relevantQuantity;
