@@ -119,13 +119,20 @@ function delay(
   };
 }
 
-function apply(state: OperationalState, ...events: Parameters<typeof applyEvent>[1][]) {
+function apply(
+  state: OperationalState,
+  ...events: Parameters<typeof applyEvent>[1][]
+) {
   for (const event of events) {
     applyEvent(state, event);
   }
 }
 
-function line(state: OperationalState, orderId: string, orderLineId = `${orderId}-L1`) {
+function line(
+  state: OperationalState,
+  orderId: string,
+  orderLineId = `${orderId}-L1`,
+) {
   return calculateFulfillment(state)
     .find((assessment) => assessment.orderId === orderId)
     ?.lines.find((assessment) => assessment.orderLineId === orderLineId);
@@ -134,7 +141,11 @@ function line(state: OperationalState, orderId: string, orderLineId = `${orderId
 describe("calculateFulfillment boundaries", () => {
   it("treats inbound available exactly at requiredShipAt as eligible", () => {
     const state = createEmptyOperationalState();
-    apply(state, order("SO-8001"), inbound("IN-8001", { expectedAvailableAt: deadline }));
+    apply(
+      state,
+      order("SO-8001"),
+      inbound("IN-8001", { expectedAvailableAt: deadline }),
+    );
 
     expect(line(state, "SO-8001")).toMatchObject({
       status: "FULFILLABLE",
@@ -219,11 +230,7 @@ describe("calculateFulfillment boundaries", () => {
 
   it("does not allocate unusable inventory", () => {
     const state = createEmptyOperationalState();
-    apply(
-      state,
-      inventory("CHI", "BRG-440", 2, 0, 8),
-      order("SO-8006"),
-    );
+    apply(state, inventory("CHI", "BRG-440", 2, 0, 8), order("SO-8006"));
 
     expect(line(state, "SO-8006")).toMatchObject({
       projectedAllocation: 2,
@@ -298,8 +305,12 @@ describe("calculateFulfillment boundaries", () => {
       }),
     );
 
-    expect(line(lineState, "SO-8009", "SO-8009-L1")?.projectedAllocation).toBe(4);
-    expect(line(lineState, "SO-8009", "SO-8009-L2")?.projectedAllocation).toBe(0);
+    expect(line(lineState, "SO-8009", "SO-8009-L1")?.projectedAllocation).toBe(
+      4,
+    );
+    expect(line(lineState, "SO-8009", "SO-8009-L2")?.projectedAllocation).toBe(
+      0,
+    );
   });
 
   it("returns no blockers or triggers for fulfillable lines", () => {
