@@ -86,43 +86,65 @@ Then:
 * the order becomes blocked;
 * the engine identifies the affected SKU, quantity shortfall, delayed shipment, and relevant dates.
 
-This scenario will become an executable specification and integration test.
+The scenario is implemented as an executable specification, automated test, and deterministic command-line demonstration.
 
-## Planned developer experience
+## Running the scenario
 
-The first runnable version includes a deterministic scenario runner.
-
-Run the included shipment-delay scenario with:
+Install dependencies and run the included shipment-delay scenario:
 
 ```bash
+npm install
 npm run scenario
 ```
 
-The runner applies each business event in order, recalculates fulfillment after every event, and prints order status transitions with their blockers and triggering changes. This deliberately exposes every intermediate state rather than skipping directly to a curated before-and-after result.
-
-A later HTTP interface will simulate events arriving from upstream systems.
-
-Example interaction:
+The runner applies each business event in order, recalculates fulfillment after every event, and prints order status transitions with their supply contributions and blockers. This exposes every intermediate state rather than skipping directly to a curated before-and-after result.
 
 ```text
-Initial assessment
-✓ SO-1001 can be fulfilled by 2026-08-08
+Scenario: shipment-delay-blocks-order
+An inbound shipment moves past an order deadline, changing the order from fulfillable to blocked.
 
-Event received
-! Inbound shipment IN-900 delayed until 2026-08-11
+[1/4] InventoryPositionReported (event-inventory-1001)
+CHI / BEARING-440: 70 usable, 0 reserved, 0 unusable
+No orders to assess.
 
-Updated assessment
-✗ SO-1001 cannot be fulfilled by 2026-08-08
+[2/4] OrderPlaced (event-order-1001)
+SO-1001: 100 BEARING-440 units required from CHI by 2026-08-08T17:00:00-05:00
 
-Blocking line
-SKU: BEARING-440
-Required: 100
-Available by required date: 90
-Shortfall: 10
+SO-1001: initial assessment BLOCKED
+Required ship time: 2026-08-08T17:00:00-05:00
+  SO-1001-L1 / BEARING-440 / CHI
+    Required: 100
+    Projected allocation: 70
+      - 70 on hand at CHI
+    Shortfall: 30
+    Blocker: 30 units have no identified supply source
 
-Explanation
-Thirty incoming units now arrive after the order's required ship date.
+[3/4] InboundShipmentConfirmed (event-inbound-1001)
+IN-900: 30 BEARING-440 units expected at CHI on 2026-08-06T09:00:00-05:00
+
+SO-1001: BLOCKED -> FULFILLABLE
+Required ship time: 2026-08-08T17:00:00-05:00
+  SO-1001-L1 / BEARING-440 / CHI
+    Required: 100
+    Projected allocation: 100
+      - 70 on hand at CHI
+      - 30 from IN-900, expected 2026-08-06T09:00:00-05:00
+    Shortfall: 0
+
+[4/4] InboundShipmentDelayed (event-inbound-1001-delayed)
+IN-900: delayed from 2026-08-06T09:00:00-05:00 to 2026-08-11T09:00:00-05:00
+
+SO-1001: FULFILLABLE -> BLOCKED
+Required ship time: 2026-08-08T17:00:00-05:00
+  SO-1001-L1 / BEARING-440 / CHI
+    Required: 100
+    Projected allocation: 70
+      - 70 on hand at CHI
+    Shortfall: 30
+    Blocker: 30 units on IN-900 arrive at 2026-08-11T09:00:00-05:00, after the required ship time
 ```
+
+A later HTTP interface will receive events from upstream systems and expose current fulfillment assessments to clients.
 
 ## Current status
 
