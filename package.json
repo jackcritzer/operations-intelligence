@@ -18,7 +18,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "private": true,
+  "license": "UNLICENSED",
   "type": "module",
   "bugs": {
     "url": "https://github.com/jackcritzer/operations-intelligence/issues"
