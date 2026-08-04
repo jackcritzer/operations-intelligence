@@ -33,10 +33,10 @@ explanation of the shortfall and the change that caused it.
 - Placed at: `2026-08-01T09:00:00-05:00`
 - Required ship time: `2026-08-08T17:00:00-05:00`
 
-| Order line | SKU | Fulfillment warehouse | Quantity |
-|---|---|---|---:|
-| `SO-1001-L1` | `BEARING-440` | `CHI` | 100 |
-| `SO-1001-L2` | `SEAL-KIT-12` | `CHI` | 20 |
+| Order line   | SKU           | Fulfillment warehouse | Quantity |
+| ------------ | ------------- | --------------------- | -------: |
+| `SO-1001-L1` | `BEARING-440` | `CHI`                 |      100 |
+| `SO-1001-L2` | `SEAL-KIT-12` | `CHI`                 |       20 |
 
 Customer identity and customer-level priority are not modeled in this slice.
 
@@ -44,10 +44,10 @@ Customer identity and customer-level priority are not modeled in this slice.
 
 `InventoryPositionReported` from the WMS:
 
-| Warehouse | SKU | Usable | Reserved | Unusable | Available to calculation |
-|---|---|---:|---:|---:|---:|
-| `CHI` | `BEARING-440` | 120 | 30 | 0 | 90 |
-| `CHI` | `SEAL-KIT-12` | 20 | 0 | 0 | 20 |
+| Warehouse | SKU           | Usable | Reserved | Unusable | Available to calculation |
+| --------- | ------------- | -----: | -------: | -------: | -----------------------: |
+| `CHI`     | `BEARING-440` |    120 |       30 |        0 |                       90 |
+| `CHI`     | `SEAL-KIT-12` |     20 |        0 |        0 |                       20 |
 
 `available to calculation = usableQuantity - reservedQuantity`.
 
@@ -59,9 +59,9 @@ Customer identity and customer-level priority are not modeled in this slice.
 - Destination warehouse: `CHI`
 - Initial expected availability: `2026-08-06T09:00:00-05:00`
 
-| Shipment line | SKU | Quantity |
-|---|---|---:|
-| `IN-900-L1` | `BEARING-440` | 30 |
+| Shipment line | SKU           | Quantity |
+| ------------- | ------------- | -------: |
+| `IN-900-L1`   | `BEARING-440` |       30 |
 
 ## Before the delay
 
@@ -87,10 +87,10 @@ Expected order status: `FULFILLABLE`.
 `IN-900` is no longer eligible for `SO-1001` because its expected availability
 is after the required ship time.
 
-| Order line | Required | Projected allocation | Shortfall | Status |
-|---|---:|---:|---:|---|
-| `SO-1001-L1` | 100 | 90 | 10 | `BLOCKED` |
-| `SO-1001-L2` | 20 | 20 | 0 | `FULFILLABLE` |
+| Order line   | Required | Projected allocation | Shortfall | Status        |
+| ------------ | -------: | -------------------: | --------: | ------------- |
+| `SO-1001-L1` |      100 |                   90 |        10 | `BLOCKED`     |
+| `SO-1001-L2` |       20 |                   20 |         0 | `FULFILLABLE` |
 
 Expected order status: `BLOCKED`, because at least one line is blocked.
 

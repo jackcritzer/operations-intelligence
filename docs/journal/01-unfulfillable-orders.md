@@ -190,4 +190,3 @@ Future operational questions include:
 - Which inbound disruption affects the most customer demand?
 - Which blocked orders have no identified recovery supply?
 - Which feasible intervention could restore fulfillment?
-

@@ -7,9 +7,9 @@ ship date, and why?
 
 ## Proposed definition
 
-An order is currently fulfillable when every active order line can be fully 
-supplied by its required ship date from its assigned fulfillment warehouse 
-using usable, unreserved on-hand inventory and confirmed inbound inventory 
+An order is currently fulfillable when every active order line can be fully
+supplied by its required ship date from its assigned fulfillment warehouse
+using usable, unreserved on-hand inventory and confirmed inbound inventory
 expected to arrive in time.
 
 An order is blocked when one or more lines have a projected shortfall.

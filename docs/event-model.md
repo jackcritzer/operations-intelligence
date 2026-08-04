@@ -1,4 +1,3 @@
-
 # Event Model
 
 ## Purpose
@@ -15,8 +14,8 @@ The event model is intentionally limited to the shipment-delay scenario. Additio
 
 Every event includes common metadata.
 
-| Field               | Meaning                                                       |
-| ------------------- | ------------------------------------------------------------- |
+| Field             | Meaning                                                       |
+| ----------------- | ------------------------------------------------------------- |
 | `eventId`         | Globally unique identifier for the event                      |
 | `eventType`       | Name of the business event                                    |
 | `occurredAt`      | Time the business fact became true                            |
@@ -57,8 +56,8 @@ ERP or order-management system.
 
 ## Required payload
 
-| Field              | Meaning                               |
-| ------------------ | ------------------------------------- |
+| Field            | Meaning                               |
+| ---------------- | ------------------------------------- |
 | `orderId`        | Stable customer-order identifier      |
 | `placedAt`       | Time the order became accepted demand |
 | `requiredShipAt` | Current committed ship deadline       |
@@ -66,8 +65,8 @@ ERP or order-management system.
 
 Each order line contains:
 
-| Field                      | Meaning                                |
-| -------------------------- | -------------------------------------- |
+| Field                    | Meaning                                |
+| ------------------------ | -------------------------------------- |
 | `orderLineId`            | Stable line identifier                 |
 | `sku`                    | Product requested                      |
 | `quantity`               | Required quantity                      |
@@ -101,9 +100,9 @@ Each order line contains:
 
 ## Facts changed
 
-* creates an open customer order;
-* creates its active order lines;
-* adds demand to the projected allocation calculation.
+- creates an open customer order;
+- creates its active order lines;
+- adds demand to the projected allocation calculation.
 
 ---
 
@@ -123,8 +122,8 @@ Warehouse management system.
 
 ## Required payload
 
-| Field                | Meaning                                              |
-| -------------------- | ---------------------------------------------------- |
+| Field              | Meaning                                              |
+| ------------------ | ---------------------------------------------------- |
 | `warehouseId`      | Warehouse where the inventory exists                 |
 | `sku`              | Product being counted                                |
 | `usableQuantity`   | Physical quantity currently suitable for fulfillment |
@@ -153,9 +152,9 @@ Warehouse management system.
 
 ## Facts changed
 
-* replaces the current inventory position for the warehouse and SKU;
-* changes available on-hand supply;
-* may change projected allocation and fulfillment status.
+- replaces the current inventory position for the warehouse and SKU;
+- changes available on-hand supply;
+- may change projected allocation and fulfillment status.
 
 Available on-hand quantity is derived as:
 
@@ -181,8 +180,8 @@ For the first slice, the simulated integration presents one normalized event reg
 
 ## Required payload
 
-| Field                      | Meaning                                          |
-| -------------------------- | ------------------------------------------------ |
+| Field                    | Meaning                                          |
+| ------------------------ | ------------------------------------------------ |
 | `shipmentId`             | Stable inbound-shipment identifier               |
 | `destinationWarehouseId` | Warehouse receiving the supply                   |
 | `expectedAvailableAt`    | Time the inventory is expected to become usable  |
@@ -190,8 +189,8 @@ For the first slice, the simulated integration presents one normalized event reg
 
 Each shipment line contains:
 
-| Field              | Meaning                |
-| ------------------ | ---------------------- |
+| Field            | Meaning                |
+| ---------------- | ---------------------- |
 | `shipmentLineId` | Stable line identifier |
 | `sku`            | Product expected       |
 | `quantity`       | Expected quantity      |
@@ -223,9 +222,9 @@ Each shipment line contains:
 
 ## Facts changed
 
-* creates or replaces a confirmed inbound shipment;
-* adds qualifying projected supply for its warehouse and SKUs;
-* may make previously blocked demand fulfillable.
+- creates or replaces a confirmed inbound shipment;
+- adds qualifying projected supply for its warehouse and SKUs;
+- may make previously blocked demand fulfillable.
 
 ---
 
@@ -243,8 +242,8 @@ Supplier, transportation, or normalized integration system.
 
 ## Required payload
 
-| Field                           | Meaning                               |
-| ------------------------------- | ------------------------------------- |
+| Field                         | Meaning                               |
+| ----------------------------- | ------------------------------------- |
 | `shipmentId`                  | Shipment whose availability changed   |
 | `previousExpectedAvailableAt` | Previously reported availability time |
 | `newExpectedAvailableAt`      | Newly reported availability time      |
@@ -271,10 +270,10 @@ Supplier, transportation, or normalized integration system.
 
 ## Facts changed
 
-* updates the shipment's expected availability time;
-* may remove its supply from an order's qualifying supply window;
-* may change an order from fulfillable to blocked;
-* provides the triggering change used in the explanation.
+- updates the shipment's expected availability time;
+- may remove its supply from an order's qualifying supply window;
+- may change an order from fulfillable to blocked;
+- provides the triggering change used in the explanation.
 
 The engine should validate that the shipment already exists.
 
@@ -284,8 +283,8 @@ It should also preserve enough information to explain that the expected availabi
 
 # Event-to-state summary
 
-| Event                         | Source                               | State affected                            |
-| ----------------------------- | ------------------------------------ | ----------------------------------------- |
+| Event                       | Source                               | State affected                            |
+| --------------------------- | ------------------------------------ | ----------------------------------------- |
 | `OrderPlaced`               | ERP                                  | Customer orders and demand                |
 | `InventoryPositionReported` | WMS                                  | Current warehouse inventory               |
 | `InboundShipmentConfirmed`  | Supplier or integration system       | Confirmed projected supply                |
@@ -299,16 +298,16 @@ None of the events directly state that an order is fulfillable or blocked.
 
 After relevant events are applied, the engine derives:
 
-* available on-hand quantity;
-* qualifying inbound supply;
-* projected supply pool;
-* projected allocation;
-* projected shortfall;
-* order-line fulfillment status;
-* order fulfillment status;
-* blocking conditions;
-* triggering changes;
-* explanations.
+- available on-hand quantity;
+- qualifying inbound supply;
+- projected supply pool;
+- projected allocation;
+- projected shortfall;
+- order-line fulfillment status;
+- order fulfillment status;
+- blocking conditions;
+- triggering changes;
+- explanations.
 
 For example, `InboundShipmentDelayed` does not contain:
 
@@ -324,16 +323,16 @@ The engine reaches that conclusion by combining the delay with the current order
 
 The first event model does not include:
 
-* order updates or cancellations;
-* order shipment or completion;
-* individual warehouse inventory adjustments;
-* reservation-created or reservation-released events;
-* inbound shipment cancellation;
-* partial receipts;
-* damaged inbound quantities;
-* warehouse transfers;
-* outbound shipment events;
-* product substitutions.
+- order updates or cancellations;
+- order shipment or completion;
+- individual warehouse inventory adjustments;
+- reservation-created or reservation-released events;
+- inbound shipment cancellation;
+- partial receipts;
+- damaged inbound quantities;
+- warehouse transfers;
+- outbound shipment events;
+- product substitutions.
 
 `InventoryPositionReported` includes reserved and unusable quantities, so separate reservation and damage events are not required for the first implementation.
 

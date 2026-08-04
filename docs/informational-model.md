@@ -10,9 +10,9 @@ This is a conceptual information model, not a database schema or TypeScript clas
 
 It distinguishes:
 
-* facts received from upstream operational systems;
-* relationships between those facts;
-* conclusions derived by the Operations Intelligence Engine.
+- facts received from upstream operational systems;
+- relationships between those facts;
+- conclusions derived by the Operations Intelligence Engine.
 
 Only information required by the first vertical slice is included.
 
@@ -62,11 +62,11 @@ Example:
 
 For the first vertical slice:
 
-* one order may contain lines assigned to different warehouses;
-* one order line cannot be split across warehouses;
-* supply from an unassigned warehouse does not count;
-* warehouse transfers are not considered;
-* the engine does not select or optimize the fulfillment warehouse.
+- one order may contain lines assigned to different warehouses;
+- one order line cannot be split across warehouses;
+- supply from an unassigned warehouse does not count;
+- warehouse transfers are not considered;
+- the engine does not select or optimize the fulfillment warehouse.
 
 The assigned warehouse is treated as an upstream operational fact.
 
@@ -100,9 +100,9 @@ The first vertical slice only needs to distinguish whether the order contributes
 
 Initial conceptual statuses:
 
-* `OPEN`
-* `CANCELLED`
-* `SHIPPED`
+- `OPEN`
+- `CANCELLED`
+- `SHIPPED`
 
 Only open orders participate in projected allocation.
 
@@ -154,12 +154,12 @@ Example:
 
 The first vertical slice does not model:
 
-* product substitutions;
-* units-of-measure conversion;
-* lot tracking;
-* serial numbers;
-* shelf life;
-* product compatibility.
+- product substitutions;
+- units-of-measure conversion;
+- lot tracking;
+- serial numbers;
+- shelf life;
+- product compatibility.
 
 ---
 
@@ -176,12 +176,12 @@ A warehouse is a physical facility where inventory may be stored and inbound shi
 
 The first vertical slice does not model:
 
-* warehouse zones;
-* bins;
-* receiving docks;
-* operating calendars;
-* picking capacity;
-* warehouse closures.
+- warehouse zones;
+- bins;
+- receiving docks;
+- operating calendars;
+- picking capacity;
+- warehouse closures.
 
 ---
 
@@ -248,19 +248,19 @@ An inbound shipment represents supply expected to become available at a warehous
 
 The first vertical slice requires only:
 
-* `PLANNED`
-* `CONFIRMED`
+- `PLANNED`
+- `CONFIRMED`
 
 Only confirmed shipments contribute to projected available supply.
 
 The model may later include statuses such as:
 
-* in transit;
-* partially received;
-* received;
-* cancelled;
-* held;
-* lost.
+- in transit;
+- partially received;
+- received;
+- cancelled;
+- held;
+- lost.
 
 Those states are deferred until a scenario requires them.
 
@@ -382,14 +382,14 @@ Several shipment lines across different shipments may reference the same SKU.
 
 An order line may be satisfied by qualifying supply that shares:
 
-* the same SKU;
-* the assigned fulfillment warehouse;
-* availability no later than the required ship time.
+- the same SKU;
+- the assigned fulfillment warehouse;
+- availability no later than the required ship time.
 
 Qualifying supply may include:
 
-* usable, unreserved on-hand inventory;
-* confirmed inbound inventory expected to be available in time.
+- usable, unreserved on-hand inventory;
+- confirmed inbound inventory expected to be available in time.
 
 There is no permanent source relationship between an order line and a shipment line in the source facts.
 
@@ -491,10 +491,10 @@ SO-1002 projected allocation: 1
 
 Projected allocation:
 
-* prevents the same supply from being counted for several orders;
-* supports fulfillment analysis;
-* does not create an upstream inventory reservation;
-* does not instruct the warehouse to pick or ship inventory.
+- prevents the same supply from being counted for several orders;
+- supports fulfillment analysis;
+- does not create an upstream inventory reservation;
+- does not instruct the warehouse to pick or ship inventory.
 
 ---
 
@@ -576,12 +576,12 @@ A blocking condition describes the current operational state preventing fulfillm
 
 Examples include:
 
-* insufficient usable on-hand inventory;
-* inventory reserved for other demand;
-* physical inventory is unusable;
-* inbound supply is unconfirmed;
-* inbound supply is expected after the required ship time;
-* higher-priority demand consumed the available projected supply.
+- insufficient usable on-hand inventory;
+- inventory reserved for other demand;
+- physical inventory is unusable;
+- inbound supply is unconfirmed;
+- inbound supply is expected after the required ship time;
+- higher-priority demand consumed the available projected supply.
 
 A blocked line may have more than one contributing condition.
 
@@ -622,18 +622,18 @@ An explanation combines the derived result with the source facts that support it
 
 For a blocked line, the explanation should include:
 
-* order identifier;
-* order line identifier;
-* SKU;
-* assigned warehouse;
-* required ship time;
-* required quantity;
-* projected allocation;
-* projected shortfall;
-* current supply contributions;
-* excluded supply and why it was excluded;
-* contributing blocking conditions;
-* triggering change when known.
+- order identifier;
+- order line identifier;
+- SKU;
+- assigned warehouse;
+- required ship time;
+- required quantity;
+- projected allocation;
+- projected shortfall;
+- current supply contributions;
+- excluded supply and why it was excluded;
+- contributing blocking conditions;
+- triggering change when known.
 
 Example:
 
@@ -668,20 +668,20 @@ The 10 units on IN-900 are expected after the required ship time.
 
 The first vertical slice does not require the engine to know:
 
-* customer billing information;
-* payment status;
-* pricing;
-* taxes;
-* carrier selection;
-* delivery routes;
-* transit-time calculation;
-* warehouse bins;
-* pick-pack capacity;
-* product substitutions;
-* warehouse transfers;
-* split fulfillment of one order line;
-* supplier purchase-order details beyond relevant inbound supply;
-* actual reservation commands;
-* actual shipment execution.
+- customer billing information;
+- payment status;
+- pricing;
+- taxes;
+- carrier selection;
+- delivery routes;
+- transit-time calculation;
+- warehouse bins;
+- pick-pack capacity;
+- product substitutions;
+- warehouse transfers;
+- split fulfillment of one order line;
+- supplier purchase-order details beyond relevant inbound supply;
+- actual reservation commands;
+- actual shipment execution.
 
 These concepts should be introduced only when a scenario requires them.

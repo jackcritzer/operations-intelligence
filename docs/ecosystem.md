@@ -10,11 +10,11 @@
 
 ## Principles
 
-* Existing operational systems remain systems of record.
-* The engine consumes their facts.
-* The engine derives customer-order impact that may not exist in any one source system.
-* The first project version simulates those integrations through typed operational events and executable scenarios.
-* The project does not require actual SAP, WMS, or TMS connections.
+- Existing operational systems remain systems of record.
+- The engine consumes their facts.
+- The engine derives customer-order impact that may not exist in any one source system.
+- The first project version simulates those integrations through typed operational events and executable scenarios.
+- The project does not require actual SAP, WMS, or TMS connections.
 
 ```mermaid
 flowchart LR
