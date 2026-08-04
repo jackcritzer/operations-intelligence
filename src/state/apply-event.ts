@@ -19,7 +19,6 @@ export function applyEvent(
   state: OperationalState,
   event: OperationalEvent,
 ): void {
-  // prevent re-applying the same event
   if (state.processedEventIds.has(event.eventId)) {
     return;
   }
@@ -177,6 +176,8 @@ function applyInboundShipmentDelayed(
     );
   }
 
+  // Confirm that the event was based on the current shipment state.
+  // A mismatch indicates a stale or out-of-order update.
   if (
     shipment.expectedAvailableAt !== event.payload.previousExpectedAvailableAt
   ) {

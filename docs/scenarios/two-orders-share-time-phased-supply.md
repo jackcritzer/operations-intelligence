@@ -35,18 +35,18 @@ priorities.
 - Placed at: `2026-08-01T09:00:00-05:00`
 - Required ship time: `2026-08-08T17:00:00-05:00`
 
-| Order line | SKU | Fulfillment warehouse | Quantity |
-|---|---|---|---:|
-| `SO-2001-L1` | `BRG-440` | `CHI` | 4 |
+| Order line   | SKU       | Fulfillment warehouse | Quantity |
+| ------------ | --------- | --------------------- | -------: |
+| `SO-2001-L1` | `BRG-440` | `CHI`                 |        4 |
 
 ### SO-2002
 
 - Placed at: `2026-08-02T09:00:00-05:00`
 - Required ship time: `2026-08-10T17:00:00-05:00`
 
-| Order line | SKU | Fulfillment warehouse | Quantity |
-|---|---|---|---:|
-| `SO-2002-L1` | `BRG-440` | `CHI` | 4 |
+| Order line   | SKU       | Fulfillment warehouse | Quantity |
+| ------------ | --------- | --------------------- | -------: |
+| `SO-2002-L1` | `BRG-440` | `CHI`                 |        4 |
 
 `SO-2001` has higher priority because it has the earlier required ship time.
 Its earlier placement time is not needed to decide this case.
@@ -55,9 +55,9 @@ Its earlier placement time is not needed to decide this case.
 
 `InventoryPositionReported` reports:
 
-| Warehouse | SKU | Usable | Reserved | Unusable | Available to calculation |
-|---|---|---:|---:|---:|---:|
-| `CHI` | `BRG-440` | 4 | 0 | 0 | 4 |
+| Warehouse | SKU       | Usable | Reserved | Unusable | Available to calculation |
+| --------- | --------- | -----: | -------: | -------: | -----------------------: |
+| `CHI`     | `BRG-440` |      4 |        0 |        0 |                        4 |
 
 ## Confirmed inbound supply
 
@@ -67,9 +67,9 @@ Its earlier placement time is not needed to decide this case.
 - Destination warehouse: `CHI`
 - Expected availability: `2026-08-09T09:00:00-05:00`
 
-| Shipment line | SKU | Quantity |
-|---|---|---:|
-| `IN-901-L1` | `BRG-440` | 4 |
+| Shipment line | SKU       | Quantity |
+| ------------- | --------- | -------: |
+| `IN-901-L1`   | `BRG-440` |        4 |
 
 The inbound supply is too late for `SO-2001` but timely for `SO-2002`.
 
@@ -81,10 +81,10 @@ available on August 9.
 
 Expected status:
 
-| Order | Expected status | Projected source |
-|---|---|---|
-| `SO-2001` | `FULFILLABLE` | 4 on hand |
-| `SO-2002` | `FULFILLABLE` | 4 from `IN-901` |
+| Order     | Expected status | Projected source |
+| --------- | --------------- | ---------------- |
+| `SO-2001` | `FULFILLABLE`   | 4 on hand        |
+| `SO-2002` | `FULFILLABLE`   | 4 from `IN-901`  |
 
 ## Delay event
 
@@ -102,10 +102,10 @@ The four on-hand units remain projected to the higher-priority `SO-2001`.
 
 Expected status:
 
-| Order | Expected status | Projected allocation | Shortfall |
-|---|---|---:|---:|
-| `SO-2001` | `FULFILLABLE` | 4 | 0 |
-| `SO-2002` | `BLOCKED` | 0 | 4 |
+| Order     | Expected status | Projected allocation | Shortfall |
+| --------- | --------------- | -------------------: | --------: |
+| `SO-2001` | `FULFILLABLE`   |                    4 |         0 |
+| `SO-2002` | `BLOCKED`       |                    0 |         4 |
 
 The `SO-2002-L1` explanation must identify both insufficient projected supply
 and `IN-901` as inbound supply available too late. The shipment delay is the

@@ -81,5 +81,4 @@ Triggering changes are reported only when state contains a recorded change
 that produced a selected blocking condition, such as a shipment delay moving
 inbound supply past the required ship time.
 
-
 Supply contributions identify the supply provisionally allocated to an order line by the fulfillment calculation. They may be present on a blocked line when available supply covers only part of its required quantity. A projected allocation does not itself authorize a partial shipment or represent a persisted reservation.

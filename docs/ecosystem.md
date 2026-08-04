@@ -8,15 +8,15 @@
 | Supplier systems               | Supplier commitments and inbound supply                          | Purchase order acknowledged, inbound date changed       |
 | Operations Intelligence Engine | Derived operational state and explanations                       | Order blocked, projected shortfall, reason for risk     |
 
-
 ## Principles
 
-* Existing operational systems remain systems of record.
-* The engine consumes their facts.
-* The engine derives customer-order impact that may not exist in any one source system.
-* The first project version simulates those integrations through scenario files and an event-ingestion interface.
-* The project does not require actual SAP, WMS, or TMS connections.
+- Existing operational systems remain systems of record.
+- The engine consumes their facts.
+- The engine derives customer-order impact that may not exist in any one source system.
+- The first project version simulates those integrations through typed operational events and executable scenarios.
+- The project does not require actual SAP, WMS, or TMS connections.
 
+```mermaid
 flowchart LR
     ERP[ERP / Order Management]
     WMS[Warehouse Management System]
@@ -29,3 +29,4 @@ flowchart LR
     SUP --> OIE
 
     OIE --> OPS[Operations Coordinator]
+```

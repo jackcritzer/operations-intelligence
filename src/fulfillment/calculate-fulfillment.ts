@@ -54,8 +54,8 @@ function toDemandItems(order: CustomerOrder): DemandItem[] {
   }));
 }
 
-// Compare two demand items to determine their priority for fulfillment allocation.
-// Compare by requiredShipAt, then placedAt, then orderId, then orderLineId.
+// Order and line IDs provide deterministic tie-breaking;
+// they do not represent business priority.
 function compareDemandPriority(left: DemandItem, right: DemandItem): number {
   return (
     Date.parse(left.requiredShipAt) - Date.parse(right.requiredShipAt) ||
@@ -337,6 +337,8 @@ function toBlockingConditions(
   let unexplainedShortfall = projectedShortfall;
   const conditions: BlockingCondition[] = [];
 
+  // Temporary slice-one attribution policy: late inbound first,
+  // then higher-priority demand, then undetermined shortfall.
   for (const supply of allocation.lateInboundSupply) {
     if (unexplainedShortfall === 0) {
       break;

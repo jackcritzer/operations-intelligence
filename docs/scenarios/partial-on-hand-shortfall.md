@@ -1,4 +1,3 @@
-
 # Partial on-hand fulfillment with unidentified shortfall
 
 ## Business question
