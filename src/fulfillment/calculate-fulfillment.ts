@@ -54,8 +54,8 @@ function toDemandItems(order: CustomerOrder): DemandItem[] {
   }));
 }
 
-// Compare two demand items to determine their priority for fulfillment allocation.
-// Compare by requiredShipAt, then placedAt, then orderId, then orderLineId.
+// Order and line IDs provide deterministic tie-breaking;
+// they do not represent business priority.
 function compareDemandPriority(left: DemandItem, right: DemandItem): number {
   return (
     Date.parse(left.requiredShipAt) - Date.parse(right.requiredShipAt) ||
@@ -337,6 +337,28 @@ function toBlockingConditions(
   let unexplainedShortfall = projectedShortfall;
   const conditions: BlockingCondition[] = [];
 
+  // Blocking evidence can overlap, but condition quantities must equal the shortfall.
+  // Attribute higher-priority demand first, then late inbound supply, then undetermined shortfall.
+  for (const priorAllocation of allocation.higherPriorityAllocations) {
+    if (unexplainedShortfall === 0) {
+      break;
+    }
+
+    const relevantQuantity = Math.min(
+      unexplainedShortfall,
+      priorAllocation.quantity,
+    );
+
+    conditions.push({
+      type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
+      quantity: relevantQuantity,
+      consumingOrderId: priorAllocation.orderId,
+      consumingOrderLineId: priorAllocation.orderLineId,
+    });
+
+    unexplainedShortfall -= relevantQuantity;
+  }
+
   for (const supply of allocation.lateInboundSupply) {
     if (unexplainedShortfall === 0) {
       break;
@@ -354,26 +376,6 @@ function toBlockingConditions(
       quantity: relevantQuantity,
       expectedAvailableAt: supply.expectedAvailableAt,
       requiredShipAt: allocation.demand.requiredShipAt,
-    });
-
-    unexplainedShortfall -= relevantQuantity;
-  }
-
-  for (const priorAllocation of allocation.higherPriorityAllocations) {
-    if (unexplainedShortfall === 0) {
-      break;
-    }
-
-    const relevantQuantity = Math.min(
-      unexplainedShortfall,
-      priorAllocation.quantity,
-    );
-
-    conditions.push({
-      type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
-      quantity: relevantQuantity,
-      consumingOrderId: priorAllocation.orderId,
-      consumingOrderLineId: priorAllocation.orderLineId,
     });
 
     unexplainedShortfall -= relevantQuantity;
