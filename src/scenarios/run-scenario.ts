@@ -30,8 +30,8 @@ export interface ScenarioRun {
   steps: ScenarioStep[];
 }
 
-// Runs a scenario by applying each event in order, recalculating fulfillment after each event, 
-// and recording any changes in fulfillment status after each event. Returns a ScenarioRun object 
+// Runs a scenario by applying each event in order, recalculating fulfillment after each event,
+// and recording any changes in fulfillment status after each event. Returns a ScenarioRun object
 // containing the scenario definition and the results of each step.
 export function runScenario(scenario: ScenarioDefinition): ScenarioRun {
   const state = createEmptyOperationalState();
