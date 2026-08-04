@@ -25,6 +25,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Run executable scenario
+        run: npm run scenario
+
       - name: Typecheck
         run: npm run typecheck
 
