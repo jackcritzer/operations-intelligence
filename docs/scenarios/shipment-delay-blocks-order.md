@@ -2,28 +2,23 @@
 
 ## Business question
 
-Can customer order `SO-1001` be fulfilled in full from its assigned warehouse
-by its required ship time, and if not, what prevents fulfillment?
+Can customer order `SO-1001` be fulfilled in full from its assigned warehouse by its required ship time, and if not, what prevents fulfillment?
 
 ## Purpose
 
-Demonstrate that a delay to eligible inbound supply can change a customer
-order from `FULFILLABLE` to `BLOCKED`, while preserving a structured
-explanation of the shortfall and the change that caused it.
+Demonstrate that a delay to eligible inbound supply can change a customer order from `FULFILLABLE` to `BLOCKED`, while preserving a structured explanation of the shortfall and the change that caused it.
 
 ## Rules exercised
 
 - Supply is eligible only when its warehouse and SKU match the order line.
 - Cross-warehouse fulfillment is out of scope.
-- Usable inventory is reduced by inventory already reserved outside this
-  calculation.
-- Confirmed inbound supply is eligible only when it is expected to be
-  available on or before the order's required ship time.
+- Usable inventory is reduced by inventory already reserved outside this calculation.
+- Confirmed inbound supply is eligible only when it is expected to be available on or before the order's required ship time.
 - Every line must be fully covered for the order to be `FULFILLABLE`.
-- A partially covered line is `BLOCKED`, although its projected allocation is
-  still reported.
-- The calculation projects allocation but does not create reservations or
-  mutate operational state.
+- A partially covered line is `BLOCKED`, although its projected allocation is still reported.
+- Blocking-condition quantities equal the projected shortfall even when explanatory evidence overlaps.
+- A shipment delay is a triggering change only when it moves supply from timely to late for the assessed order.
+- The calculation projects allocation but does not create reservations or mutate operational state.
 
 ## Order event
 
@@ -65,9 +60,7 @@ Customer identity and customer-level priority are not modeled in this slice.
 
 ## Before the delay
 
-For `SO-1001-L1`, 90 units are available on hand and 30 confirmed inbound
-units are expected before the required ship time. The engine can project an
-allocation of 100 units without using all 30 inbound units.
+For `SO-1001-L1`, 90 units are available on hand and 30 confirmed inbound units are expected before the required ship time. The engine can project an allocation of 100 units without using all 30 inbound units.
 
 `SO-1001-L2` is fully covered by its 20 on-hand units.
 
@@ -82,10 +75,11 @@ Expected order status: `FULFILLABLE`.
 - Changed at: `2026-08-04T14:00:00-05:00`
 - Reason: carrier capacity constraint
 
+The previous availability was before `SO-1001`'s deadline and the new availability is after it, so this is a deadline-crossing delay for the order.
+
 ## After the delay
 
-`IN-900` is no longer eligible for `SO-1001` because its expected availability
-is after the required ship time.
+`IN-900` is no longer eligible for `SO-1001` because its expected availability is after the required ship time.
 
 | Order line   | Required | Projected allocation | Shortfall | Status        |
 | ------------ | -------: | -------------------: | --------: | ------------- |
@@ -94,12 +88,12 @@ is after the required ship time.
 
 Expected order status: `BLOCKED`, because at least one line is blocked.
 
-The explanation must identify:
+The explanation for `SO-1001-L1` must identify:
 
-- an `INSUFFICIENT_PROJECTED_SUPPLY` condition with a shortfall of 10;
-- the 30 units on `IN-900` as `INBOUND_AVAILABLE_TOO_LATE`; and
-- the shipment delay as the triggering change, including its previous and new
-  expected availability times.
+- an `INBOUND_AVAILABLE_TOO_LATE` blocking condition for 10 units on `IN-900`, equal to the projected shortfall; and
+- the shipment delay as the triggering change, including its previous and new expected availability times.
+
+Although `IN-900` contains 30 late units, only 10 units are attributed to this line's blocker because blocking-condition quantities cannot exceed the line's projected shortfall.
 
 ## Explicitly out of scope
 
