@@ -179,12 +179,14 @@ Boundary tests cover:
 - omission of blockers and triggers for fulfillable lines;
 - selection of only relevant, deadline-crossing shipment-delay triggers.
 
-The scenario applies four events:
+The executable acceptance suite covers four documented business scenarios:
 
-1. Warehouse inventory is reported.
-2. An order is placed and is initially blocked.
-3. Timely inbound supply is confirmed and the order becomes fulfillable.
-4. That supply is delayed beyond the deadline and the order becomes blocked again.
+1. `partial-on-hand-shortfall` verifies partial allocation and an undetermined remainder when no more specific evidence exists.
+2. `mixed-cause-shortfall` verifies that overlapping evidence partitions one shortfall without double-counting.
+3. `shipment-delay-blocks-order` verifies an order moving from blocked to fulfillable and back to blocked when inbound availability crosses its deadline.
+4. `two-orders-share-time-phased-supply` verifies deterministic competition between orders for shared on-hand and inbound supply.
+
+Each scenario uses the same event-processing, state-projection, fulfillment-calculation, and explanation code used by the engine. Focused tests remain responsible for isolated allocation boundaries and blocker-attribution edge cases.
 
 Verification includes automated tests, TypeScript typechecking, formatting checks, CI, and manual review of the executable scenario as an operational story.
 
@@ -207,6 +209,8 @@ The actual problem also requires reconstructing state from events, distinguishin
 Explainability cannot be attached afterward as generated prose. The calculation must retain supply provenance, excluded supply, allocation history, relevant state changes, and an explicit attribution policy while producing the result.
 
 A fact can be relevant without being the best explanation. The engine must distinguish evidence that caused a represented status transition from evidence that merely coexists with the current shortage.
+
+Executable business scenarios provide a different guarantee from focused unit tests. Unit tests establish individual calculation rules; scenarios establish that events, state transitions, allocation, explanations, and status changes form a coherent operational story. Converting the documented scenarios into executable specifications also exposed drift between the written rules and the implemented result contract.
 
 ## Interview story
 
