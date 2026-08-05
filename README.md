@@ -89,14 +89,20 @@ The scenario is implemented as an executable specification, automated test, and 
 
 ## Running the scenario
 
-Install dependencies and run the included shipment-delay scenario:
+Install dependencies and run all documented fulfillment scenarios:
 
 ```bash
 npm install
 npm run scenario
 ```
 
-The runner applies each business event in order, recalculates fulfillment after every event, and prints order status transitions with their supply contributions and blockers. This exposes every intermediate state rather than skipping directly to a curated before-and-after result.
+Run one scenario by passing its name:
+
+```bash
+npm run scenario -- shipment-delay-blocks-order
+```
+
+The runner applies each business event in order, recalculates fulfillment after every event, and prints order status transitions with their supply contributions, blockers, and matching triggering changes. This exposes every intermediate state rather than skipping directly to a curated before-and-after result. The following is the shipment-delay scenario output:
 
 ```text
 Scenario: shipment-delay-blocks-order
@@ -141,6 +147,7 @@ Required ship time: 2026-08-08T17:00:00-05:00
       - 70 on hand at CHI
     Shortfall: 30
     Blocker: 30 units on IN-900 arrive at 2026-08-11T09:00:00-05:00, after the required ship time
+    Trigger: IN-900 delayed from 2026-08-06T09:00:00-05:00 to 2026-08-11T09:00:00-05:00
 ```
 
 A later HTTP interface will receive events from upstream systems and expose current fulfillment assessments to clients.
@@ -157,7 +164,7 @@ The system currently:
 - explains late inbound supply, supply consumed by higher-priority demand, and undetermined shortfalls;
 - attributes overlapping blocker evidence without exceeding the projected shortfall;
 - preserves a shipment delay as a triggering change only when it moves inbound supply from timely to late for the assessed order;
-- runs a deterministic shipment-delay scenario event by event.
+- runs all four documented fulfillment scenarios from the same definitions used by the parameterized acceptance test.
 
 PostgreSQL persistence, external event ingestion, and an HTTP API are intentionally deferred until after this engine checkpoint.
 

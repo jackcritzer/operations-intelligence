@@ -31,7 +31,6 @@ Demonstrate that a delay to eligible inbound supply can change a customer order 
 | Order line   | SKU           | Fulfillment warehouse | Quantity |
 | ------------ | ------------- | --------------------- | -------: |
 | `SO-1001-L1` | `BEARING-440` | `CHI`                 |      100 |
-| `SO-1001-L2` | `SEAL-KIT-12` | `CHI`                 |       20 |
 
 Customer identity and customer-level priority are not modeled in this slice.
 
@@ -41,8 +40,7 @@ Customer identity and customer-level priority are not modeled in this slice.
 
 | Warehouse | SKU           | Usable | Reserved | Unusable | Available to calculation |
 | --------- | ------------- | -----: | -------: | -------: | -----------------------: |
-| `CHI`     | `BEARING-440` |    120 |       30 |        0 |                       90 |
-| `CHI`     | `SEAL-KIT-12` |     20 |        0 |        0 |                       20 |
+| `CHI`     | `BEARING-440` |     70 |        0 |        0 |                       70 |
 
 `available to calculation = usableQuantity - reservedQuantity`.
 
@@ -60,9 +58,9 @@ Customer identity and customer-level priority are not modeled in this slice.
 
 ## Before the delay
 
-For `SO-1001-L1`, 90 units are available on hand and 30 confirmed inbound units are expected before the required ship time. The engine can project an allocation of 100 units without using all 30 inbound units.
-
-`SO-1001-L2` is fully covered by its 20 on-hand units.
+For `SO-1001-L1`, 70 units are available on hand and 30 confirmed inbound
+units are expected before the required ship time. The engine can project an
+allocation of 100 units.
 
 Expected order status: `FULFILLABLE`.
 
@@ -72,8 +70,8 @@ Expected order status: `FULFILLABLE`.
 
 - Previous expected availability: `2026-08-06T09:00:00-05:00`
 - New expected availability: `2026-08-11T09:00:00-05:00`
-- Changed at: `2026-08-04T14:00:00-05:00`
-- Reason: carrier capacity constraint
+- Changed at: `2026-08-03T12:00:00-05:00`
+- Reason: carrier delay
 
 The previous availability was before `SO-1001`'s deadline and the new availability is after it, so this is a deadline-crossing delay for the order.
 
@@ -81,19 +79,20 @@ The previous availability was before `SO-1001`'s deadline and the new availabili
 
 `IN-900` is no longer eligible for `SO-1001` because its expected availability is after the required ship time.
 
-| Order line   | Required | Projected allocation | Shortfall | Status        |
-| ------------ | -------: | -------------------: | --------: | ------------- |
-| `SO-1001-L1` |      100 |                   90 |        10 | `BLOCKED`     |
-| `SO-1001-L2` |       20 |                   20 |         0 | `FULFILLABLE` |
+| Order line   | Required | Projected allocation | Shortfall | Status    |
+| ------------ | -------: | -------------------: | --------: | --------- |
+| `SO-1001-L1` |      100 |                   70 |        30 | `BLOCKED` |
 
 Expected order status: `BLOCKED`, because at least one line is blocked.
 
 The explanation for `SO-1001-L1` must identify:
 
-- an `INBOUND_AVAILABLE_TOO_LATE` blocking condition for 10 units on `IN-900`, equal to the projected shortfall; and
+- an `INBOUND_AVAILABLE_TOO_LATE` blocking condition for 30 units on
+  `IN-900`, equal to the projected shortfall; and
 - the shipment delay as the triggering change, including its previous and new expected availability times.
 
-Although `IN-900` contains 30 late units, only 10 units are attributed to this line's blocker because blocking-condition quantities cannot exceed the line's projected shortfall.
+All 30 units on `IN-900` are attributed to the blocker because the line's
+projected shortfall is also 30 units.
 
 ## Explicitly out of scope
 
