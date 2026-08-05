@@ -278,7 +278,7 @@ function toLineAssessment(
   const isBlocked = projectedShortfall > 0;
 
   const blockingConditions = isBlocked
-    ? toBlockingConditions(allocation, projectedShortfall)
+    ? toBlockingConditions(allocation, projectedShortfall, state)
     : [];
 
   const triggeringChanges = isBlocked
@@ -330,56 +330,66 @@ function buildOrderAssessments(
   return [...assessmentsByOrderId.values()];
 }
 
+function wasDelayedPastDeadline(
+  supply: InboundSupplyItem,
+  demand: DemandItem,
+  state: OperationalState,
+): boolean {
+  const change = state.shipmentAvailabilityChanges.get(supply.shipmentId);
+
+  if (!change) {
+    return false;
+  }
+
+  return (
+    change.newExpectedAvailableAt === supply.expectedAvailableAt &&
+    Date.parse(change.previousExpectedAvailableAt) <=
+      Date.parse(demand.requiredShipAt) &&
+    Date.parse(change.newExpectedAvailableAt) >
+      Date.parse(demand.requiredShipAt)
+  );
+}
+
 function toBlockingConditions(
   allocation: DemandAllocation,
   projectedShortfall: number,
+  state: OperationalState,
 ): BlockingCondition[] {
   let unexplainedShortfall = projectedShortfall;
   const conditions: BlockingCondition[] = [];
 
-  // Temporary slice-one attribution policy: late inbound first,
-  // then higher-priority demand, then undetermined shortfall.
+  const deadlineCrossingDelayedSupply: InboundSupplyItem[] = [];
+  const otherLateInboundSupply: InboundSupplyItem[] = [];
+
   for (const supply of allocation.lateInboundSupply) {
-    if (unexplainedShortfall === 0) {
-      break;
+    if (wasDelayedPastDeadline(supply, allocation.demand, state)) {
+      deadlineCrossingDelayedSupply.push(supply);
+    } else {
+      otherLateInboundSupply.push(supply);
     }
-
-    const relevantQuantity = Math.min(
-      unexplainedShortfall,
-      supply.remainingQuantity,
-    );
-
-    conditions.push({
-      type: "INBOUND_AVAILABLE_TOO_LATE",
-      shipmentId: supply.shipmentId,
-      shipmentLineId: supply.shipmentLineId,
-      quantity: relevantQuantity,
-      expectedAvailableAt: supply.expectedAvailableAt,
-      requiredShipAt: allocation.demand.requiredShipAt,
-    });
-
-    unexplainedShortfall -= relevantQuantity;
   }
 
-  for (const priorAllocation of allocation.higherPriorityAllocations) {
-    if (unexplainedShortfall === 0) {
-      break;
-    }
+  // Blocking evidence can overlap. Attribute the strongest causal evidence
+  // first while ensuring condition quantities equal the projected shortfall.
+  unexplainedShortfall = attributeLateInbound(
+    deadlineCrossingDelayedSupply,
+    allocation.demand,
+    unexplainedShortfall,
+    conditions,
+  );
 
-    const relevantQuantity = Math.min(
-      unexplainedShortfall,
-      priorAllocation.quantity,
-    );
+  unexplainedShortfall = attributeHigherPriorityDemand(
+    allocation.higherPriorityAllocations,
+    unexplainedShortfall,
+    conditions,
+  );
 
-    conditions.push({
-      type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
-      quantity: relevantQuantity,
-      consumingOrderId: priorAllocation.orderId,
-      consumingOrderLineId: priorAllocation.orderLineId,
-    });
-
-    unexplainedShortfall -= relevantQuantity;
-  }
+  unexplainedShortfall = attributeLateInbound(
+    otherLateInboundSupply,
+    allocation.demand,
+    unexplainedShortfall,
+    conditions,
+  );
 
   if (unexplainedShortfall > 0) {
     conditions.push({
@@ -389,6 +399,67 @@ function toBlockingConditions(
   }
 
   return conditions;
+}
+
+function attributeLateInbound(
+  supplies: InboundSupplyItem[],
+  demand: DemandItem,
+  remainingShortfall: number,
+  conditions: BlockingCondition[],
+): number {
+  for (const supply of supplies) {
+    if (remainingShortfall === 0) {
+      break;
+    }
+
+    const quantity = Math.min(remainingShortfall, supply.remainingQuantity);
+
+    if (quantity === 0) {
+      continue;
+    }
+
+    conditions.push({
+      type: "INBOUND_AVAILABLE_TOO_LATE",
+      shipmentId: supply.shipmentId,
+      shipmentLineId: supply.shipmentLineId,
+      quantity,
+      expectedAvailableAt: supply.expectedAvailableAt,
+      requiredShipAt: demand.requiredShipAt,
+    });
+
+    remainingShortfall -= quantity;
+  }
+
+  return remainingShortfall;
+}
+
+function attributeHigherPriorityDemand(
+  allocations: SupplyAllocationRecord[],
+  remainingShortfall: number,
+  conditions: BlockingCondition[],
+): number {
+  for (const allocation of allocations) {
+    if (remainingShortfall === 0) {
+      break;
+    }
+
+    const quantity = Math.min(remainingShortfall, allocation.quantity);
+
+    if (quantity === 0) {
+      continue;
+    }
+
+    conditions.push({
+      type: "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND",
+      quantity,
+      consumingOrderId: allocation.orderId,
+      consumingOrderLineId: allocation.orderLineId,
+    });
+
+    remainingShortfall -= quantity;
+  }
+
+  return remainingShortfall;
 }
 
 function toTriggeringChanges(
@@ -408,7 +479,14 @@ function toTriggeringChanges(
 
     const change = state.shipmentAvailabilityChanges.get(condition.shipmentId);
 
-    if (!change) {
+    if (
+      !change ||
+      change.newExpectedAvailableAt !== condition.expectedAvailableAt ||
+      Date.parse(change.previousExpectedAvailableAt) >
+        Date.parse(condition.requiredShipAt) ||
+      Date.parse(change.newExpectedAvailableAt) <=
+        Date.parse(condition.requiredShipAt)
+    ) {
       continue;
     }
 

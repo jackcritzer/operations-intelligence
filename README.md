@@ -155,7 +155,8 @@ The system currently:
 - allocates on-hand and timely inbound supply by deterministic demand priority;
 - reports order- and line-level fulfillment status, projected allocation, and shortfall;
 - explains late inbound supply, supply consumed by higher-priority demand, and undetermined shortfalls;
-- preserves shipment delays as triggering changes when they explain a blocker;
+- attributes overlapping blocker evidence without exceeding the projected shortfall;
+- preserves a shipment delay as a triggering change only when it moves inbound supply from timely to late for the assessed order;
 - runs a deterministic shipment-delay scenario event by event.
 
 PostgreSQL persistence, external event ingestion, and an HTTP API are intentionally deferred until after this engine checkpoint.

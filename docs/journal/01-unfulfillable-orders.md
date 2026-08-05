@@ -27,6 +27,8 @@ A projected allocation is not a reservation. It explains how current supply woul
 - Each supply unit can be projected to at most one demand line.
 - A line is `FULFILLABLE` when its projected shortfall is zero; otherwise it is `BLOCKED`.
 - An order is fulfillable only when every active line is fulfillable.
+- When blocking evidence overlaps, shortfall is attributed by explanatory strength: deadline-crossing delayed inbound, supply consumed by higher-priority demand, other late inbound, then undetermined remainder.
+- A shipment delay is a triggering change for an order only when the represented change moved the shipment from timely to late for that order's deadline.
 
 The result separates three concepts:
 
@@ -34,7 +36,7 @@ The result separates three concepts:
 - `blockingConditions`: why the remaining demand cannot be covered;
 - `triggeringChanges`: what recorded change produced a selected condition.
 
-Blocking-condition quantities must account for the complete projected shortfall.
+Blocking-condition quantities must account for the complete projected shortfall without exceeding it, even when several facts overlap.
 
 ## Alternatives considered
 
@@ -60,6 +62,12 @@ That would blur the boundary between an intelligence engine and an execution sys
 
 Strings are easy to display but difficult to test, aggregate, or expose consistently through an API. Explanations are structured domain results; presentation code turns them into prose.
 
+### Use one global blocker-type order
+
+A fixed order such as “late inbound before higher-priority demand” makes results deterministic, but it can select the less useful explanation when evidence overlaps. The same late shipment can be causal for one order and merely circumstantial for another because orders have different deadlines.
+
+The engine instead considers whether a recorded delay crossed the assessed order’s deadline. This preserves the change that caused a represented fulfillment transition before attributing remaining quantities to allocation competition, other late inbound, or an undetermined remainder.
+
 ## Implementation approach
 
 The slice follows this flow:
@@ -69,11 +77,19 @@ operational events
 → current operational state
 → prioritized demand and matching supply
 → projected allocation
+→ evidence attribution
 → order- and line-level assessments
 → human-readable scenario output
 ```
 
 Events represent facts learned from operational systems. `applyEvent` validates event-to-state consistency and updates the in-memory projection. The fulfillment calculator rebuilds a calculation-local supply pool, sorts active demand deterministically, allocates eligible supply, and constructs structured explanations for each shortfall.
+
+Late inbound evidence is partitioned into two groups for each demand line:
+
+1. supply whose latest represented delay moved it from on time to late for that demand line;
+2. other supply that is currently late but did not cross that deadline in the represented change.
+
+The calculator consumes explanatory quantities in four explicit phases: deadline-crossing delayed inbound, higher-priority allocations, other late inbound, and undetermined remainder. This prevents overlapping evidence from explaining more units than the projected shortfall.
 
 The executable scenario recalculates fulfillment after each event and shows status transitions rather than only the final state.
 
@@ -98,14 +114,32 @@ Inbound supply becomes available after the required ship time.
 A trigger describes the earlier change:
 
 ```text
-The shipment was delayed from its previous availability time to a later time.
+The shipment was delayed from a timely availability to one after this order's deadline.
 ```
 
+A delay from already late to even later is not a trigger for that order, although the shipment can still appear as late-inbound blocking evidence.
+
 The scenario CLI avoids printing these facts twice when the event being displayed is itself the trigger, while the engine preserves both structures for later queries.
+
+### Attributing overlapping blocking evidence
+
+A projected shortfall can have multiple true explanations. Matching supply may have been consumed by higher-priority demand while another matching inbound shipment is scheduled after the deadline. Returning every overlapping quantity would overstate the shortfall.
+
+For example, an earlier order may already have consumed on-hand supply while a later order remains fulfillable from inbound supply. If that inbound shipment then crosses the later order’s deadline, the delay explains the transition to `BLOCKED`; the unchanged earlier allocation does not. The deadline-crossing delayed supply therefore receives attribution first.
+
+After causal delayed supply is attributed, eligible supply consumed by higher-priority demand explains where otherwise usable supply went. Other late inbound is weaker evidence because it may never have been capable of fulfilling the order. Any quantity the represented evidence cannot explain remains undetermined.
+
+This is an attribution policy, not a claim that only one fact is true. It selects which evidence accounts for each unit of the actual shortfall.
 
 ### Preserving supply provenance
 
 Showing only allocation totals hid the scenario’s causal story. The output now shows that the fulfillable order is covered by 70 on-hand units plus 30 inbound units, making it clear why delaying those 30 inbound units creates a 30-unit shortfall.
+
+### Current delay-history limitation
+
+Operational state retains only the latest availability change for each shipment. If a shipment first crosses an order deadline and is later delayed again, the original crossing is no longer represented in current state.
+
+The current attribution is therefore sound for the latest represented change, not for complete shipment history. Durable event persistence and replay should preserve the history needed to explain multiple successive delays without expanding this slice into event-history infrastructure prematurely.
 
 ## Testing and validation
 
@@ -129,7 +163,12 @@ Fulfillment tests cover:
 - deterministic ID tie-breaking;
 - partial fulfillment and multi-line rollup;
 - mixed-cause shortfalls;
-- shipment-delay blockers and triggers.
+- shipment-delay blockers and triggers;
+- causal delayed inbound taking precedence over overlapping allocation evidence;
+- higher-priority demand taking precedence over inbound that was already late;
+- all four attribution phases contributing to one shortfall;
+- delays from already late to later remaining non-triggering;
+- blocking-condition quantities never exceeding the projected shortfall.
 
 Boundary tests cover:
 
@@ -138,7 +177,7 @@ Boundary tests cover:
 - reserved and unusable inventory;
 - prevention of double allocation;
 - omission of blockers and triggers for fulfillable lines;
-- selection of only relevant shipment-delay triggers.
+- selection of only relevant, deadline-crossing shipment-delay triggers.
 
 The scenario applies four events:
 
@@ -165,13 +204,15 @@ required quantity - available quantity = shortfall
 
 The actual problem also requires reconstructing state from events, distinguishing usable and projected supply, evaluating time-phased supply against commitments, allocating shared supply deterministically, and preserving enough evidence to explain the result.
 
-Explainability cannot be attached afterward as generated prose. The calculation must retain supply provenance, excluded supply, allocation history, and relevant state changes while producing the result.
+Explainability cannot be attached afterward as generated prose. The calculation must retain supply provenance, excluded supply, allocation history, relevant state changes, and an explicit attribution policy while producing the result.
+
+A fact can be relevant without being the best explanation. The engine must distinguish evidence that caused a represented status transition from evidence that merely coexists with the current shortage.
 
 ## Interview story
 
 I started with a business question rather than an API or database schema. I modeled orders, inventory, inbound supply, and delays as facts from separate operational systems. The main technical challenges were preventing double allocation across competing demand and producing explanations that did not claim more than the available evidence supported.
 
-I implemented deterministic demand priority, a calculation-local supply pool, structured supply contributions, blocking conditions, and triggering changes. The executable scenario demonstrates an order moving from blocked to fulfillable and back to blocked when inbound availability crosses its deadline.
+I implemented deterministic demand priority, a calculation-local supply pool, structured supply contributions, blocking conditions, and triggering changes. When blocking evidence overlaps, the engine attributes the shortfall according to explanatory strength and only reports a shipment delay as a trigger when it moved supply across the assessed order’s deadline. The executable scenario demonstrates an order moving from blocked to fulfillable and back to blocked when inbound availability crosses its deadline.
 
 The current result is an in-memory domain engine, not yet a production service. Its value is that the core business behavior and explanation contracts are explicit and tested before HTTP and persistence concerns are added.
 
@@ -182,7 +223,8 @@ Near-term system work:
 1. Define validated HTTP contracts for event submission and fulfillment queries.
 2. Persist accepted events with durable idempotency.
 3. Rebuild state through deterministic replay.
-4. Add structured errors, logging, deployment, and basic observability.
+4. Preserve complete shipment-change history for explanations across successive delays.
+5. Add structured errors, logging, deployment, and basic observability.
 
 Future operational questions include:
 
