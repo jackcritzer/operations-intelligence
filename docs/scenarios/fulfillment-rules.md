@@ -73,12 +73,15 @@ lacks evidence for those conclusions in this vertical slice.
 When more than one condition could explain a shortfall, the intended
 precedence is:
 
-1. supply consumed by higher-priority demand;
-2. inbound supply available too late;
-3. undetermined remainder.
+1. previously timely inbound supply that a recorded delay moved past the
+   assessed line's deadline;
+2. eligible supply consumed by higher-priority demand;
+3. other inbound supply available after the deadline;
+4. undetermined remainder.
 
 Triggering changes are reported only when state contains a recorded change
-that produced a selected blocking condition, such as a shipment delay moving
-inbound supply past the required ship time.
+that produced a selected blocking condition. A shipment delay is a triggering
+change only when the recorded change moved that shipment from timely to late
+for the assessed line.
 
 Supply contributions identify the supply provisionally allocated to an order line by the fulfillment calculation. They may be present on a blocked line when available supply covers only part of its required quantity. A projected allocation does not itself authorize a partial shipment or represent a persisted reservation.

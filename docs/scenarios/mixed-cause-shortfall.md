@@ -27,15 +27,21 @@ knows?
 
 ## Explanation precedence
 
-Shortfall explanations are assigned in this order:
+`SHIP-7001` was already expected after `SO-7002`'s deadline when it was
+confirmed. It is therefore other late inbound, not deadline-crossing delayed
+supply. For this scenario, shortfall explanations are assigned in this order:
 
 1. Supply consumed by higher-priority demand.
-2. Matching inbound supply available after the required ship time.
+2. Other matching inbound supply available after the required ship time.
 3. Any remaining quantity is marked as an undetermined shortfall cause.
 
 Higher-priority consumption comes first because it records an allocation
 decision the engine actually made. Late inbound is an alternative supply source
 that was excluded by timing. The fallback must cover only the remainder.
+
+If represented inbound had instead moved from timely to late through a
+deadline-crossing delay, that evidence would receive attribution before
+higher-priority consumption.
 
 ## Explanation boundary
 

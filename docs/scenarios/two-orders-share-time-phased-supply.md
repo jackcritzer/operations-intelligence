@@ -107,9 +107,10 @@ Expected status:
 | `SO-2001` | `FULFILLABLE`   |                    4 |         0 |
 | `SO-2002` | `BLOCKED`       |                    0 |         4 |
 
-The `SO-2002-L1` explanation must identify both insufficient projected supply
-and `IN-901` as inbound supply available too late. The shipment delay is the
-triggering change.
+The `SO-2002-L1` explanation must identify `IN-901` as inbound supply
+available too late for all 4 shortfall units. The shipment delay is the
+triggering change because it moved `IN-901` from timely to late for
+`SO-2002`.
 
 It should not claim that higher-priority demand caused the shortfall in this
 specific before/after case: even before the delay, `SO-2002` depended on its

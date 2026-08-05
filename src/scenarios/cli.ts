@@ -5,24 +5,35 @@ import type {
   SupplyContribution,
   TriggeringChange,
 } from "../fulfillment/fulfillment-result.js";
+import { fulfillmentScenarios } from "./index.js";
 import { runScenario } from "./run-scenario.js";
-import { shipmentDelayBlocksOrderScenario } from "./shipment-delay-blocks-order.js";
 
-const scenarios = new Map([
-  [shipmentDelayBlocksOrderScenario.name, shipmentDelayBlocksOrderScenario],
-]);
+const scenarios = new Map(
+  fulfillmentScenarios.map((scenario) => [scenario.name, scenario]),
+);
+const requestedName = process.argv[2];
+const selectedScenarios = requestedName
+  ? [scenarios.get(requestedName)].filter((scenario) => scenario !== undefined)
+  : fulfillmentScenarios;
 
-const scenarioName = process.argv[2] ?? shipmentDelayBlocksOrderScenario.name;
-const scenario = scenarios.get(scenarioName);
-
-if (!scenario) {
+if (requestedName && selectedScenarios.length === 0) {
   console.error(
-    `Unknown scenario "${scenarioName}". Available scenarios: ${[
+    `Unknown scenario "${requestedName}". Available scenarios: ${[
       ...scenarios.keys(),
     ].join(", ")}`,
   );
   process.exitCode = 1;
 } else {
+  selectedScenarios.forEach((scenario, scenarioIndex) => {
+    if (scenarioIndex > 0) {
+      console.log("\n" + "=".repeat(80) + "\n");
+    }
+
+    printScenario(scenario);
+  });
+}
+
+function printScenario(scenario: (typeof fulfillmentScenarios)[number]): void {
   const result = runScenario(scenario);
 
   console.log(`Scenario: ${result.scenario.name}`);
@@ -187,7 +198,7 @@ function shouldPrintTrigger(
   change: TriggeringChange,
   currentEvent: OperationalEvent,
 ): boolean {
-  return !(
+  return (
     currentEvent.eventType === "InboundShipmentDelayed" &&
     change.type === "SHIPMENT_DELAYED" &&
     change.shipmentId === currentEvent.payload.shipmentId

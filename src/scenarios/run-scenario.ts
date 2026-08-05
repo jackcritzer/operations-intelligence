@@ -11,6 +11,30 @@ export interface ScenarioDefinition {
   name: string;
   description: string;
   events: OperationalEvent[];
+  checkpoints: ScenarioCheckpoint[];
+}
+
+export interface ScenarioCheckpoint {
+  name: string;
+  afterEventCount: number;
+  expectedAssessments: ExpectedOrderAssessment[];
+}
+
+export interface ExpectedOrderAssessment {
+  orderId: string;
+  status: FulfillmentStatus;
+  lines: Array<
+    Pick<
+      OrderFulfillmentAssessment["lines"][number],
+      | "orderLineId"
+      | "status"
+      | "projectedAllocation"
+      | "projectedShortfall"
+      | "supplyContributions"
+      | "blockingConditions"
+      | "triggeringChanges"
+    >
+  >;
 }
 
 export interface FulfillmentStatusChange {
