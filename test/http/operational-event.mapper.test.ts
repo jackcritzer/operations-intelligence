@@ -1,62 +1,111 @@
 import { describe, expect, it } from "vitest";
 
-import type { Clock } from "../../src/http/mappers/operational-event.mapper.js";
-import { mapInboundShipmentDelayedRequest } from "../../src/http/mappers/operational-event.mapper.js";
-import type { InboundShipmentDelayedRequest } from "../../src/http/schemas/operational-event.schema.js";
+import { mapOperationalEventRequest } from "../../src/http/mappers/operational-event.mapper.js";
+import type {
+  InboundShipmentConfirmedRequest,
+  InboundShipmentDelayedRequest,
+  InventoryPositionReportedRequest,
+  OrderPlacedRequest,
+} from "../../src/http/schemas/operational-event.schema.js";
 
-const fixedClock: Clock = {
-  now: () => new Date("2026-08-03T17:00:01.123Z"),
+const receivedAt = "2026-08-07T17:00:01.123Z";
+
+const fixedClock = {
+  now: () => new Date(receivedAt),
 };
 
-function createRequest(): InboundShipmentDelayedRequest {
-  return {
-    eventId: "delay-1",
-    eventType: "InboundShipmentDelayed",
-    occurredAt: "2026-08-03T12:00:00-05:00",
-    source: "TRANSPORTATION_INTEGRATION",
-    payload: {
-      shipmentId: "IN-900",
-      previousExpectedAvailableAt: "2026-08-06T09:00:00-05:00",
-      newExpectedAvailableAt: "2026-08-11T09:00:00-05:00",
-      reason: "Carrier delay",
-    },
-  };
-}
-
-describe("mapInboundShipmentDelayedRequest", () => {
-  it("maps the HTTP request into a domain event", () => {
-    const event = mapInboundShipmentDelayedRequest(createRequest(), fixedClock);
-
-    expect(event).toEqual({
-      eventId: "delay-1",
-      eventType: "InboundShipmentDelayed",
-      occurredAt: "2026-08-03T12:00:00-05:00",
-      receivedAt: "2026-08-03T17:00:01.123Z",
-      source: "TRANSPORTATION_INTEGRATION",
+describe("mapOperationalEventRequest", () => {
+  it("maps an OrderPlaced request", () => {
+    const request: OrderPlacedRequest = {
+      eventId: "EVT-ORDER-2001",
+      eventType: "OrderPlaced",
+      occurredAt: "2026-08-01T09:00:00-05:00",
+      source: "ERP",
       payload: {
-        shipmentId: "IN-900",
-        previousExpectedAvailableAt: "2026-08-06T09:00:00-05:00",
-        newExpectedAvailableAt: "2026-08-11T09:00:00-05:00",
-        reason: "Carrier delay",
+        orderId: "SO-2001",
+        placedAt: "2026-08-01T09:00:00-05:00",
+        requiredShipAt: "2026-08-08T17:00:00-05:00",
+        lines: [
+          {
+            orderLineId: "SO-2001-L1",
+            sku: "BRG-440",
+            quantity: 4,
+            fulfillmentWarehouseId: "CHI",
+          },
+        ],
       },
+    };
+
+    expect(mapOperationalEventRequest(request, fixedClock)).toEqual({
+      ...request,
+      receivedAt,
     });
   });
 
-  it("uses the server clock for receivedAt", () => {
-    const request = createRequest();
+  it("maps an InventoryPositionReported request", () => {
+    const request: InventoryPositionReportedRequest = {
+      eventId: "EVT-INVENTORY-CHI-BRG-440",
+      eventType: "InventoryPositionReported",
+      occurredAt: "2026-08-01T08:00:00-05:00",
+      source: "WMS",
+      payload: {
+        warehouseId: "CHI",
+        sku: "BRG-440",
+        usableQuantity: 4,
+        reservedQuantity: 0,
+        unusableQuantity: 0,
+      },
+    };
 
-    const event = mapInboundShipmentDelayedRequest(request, fixedClock);
-
-    expect(event.receivedAt).toBe("2026-08-03T17:00:01.123Z");
-    expect(event.receivedAt).not.toBe(event.occurredAt);
+    expect(mapOperationalEventRequest(request, fixedClock)).toEqual({
+      ...request,
+      receivedAt,
+    });
   });
 
-  it("omits an optional reason when the request does not contain one", () => {
-    const request = createRequest();
-    delete request.payload.reason;
+  it("maps an InboundShipmentConfirmed request", () => {
+    const request: InboundShipmentConfirmedRequest = {
+      eventId: "EVT-INBOUND-901-CONFIRMED",
+      eventType: "InboundShipmentConfirmed",
+      occurredAt: "2026-08-03T10:00:00-05:00",
+      source: "SUPPLIER_INTEGRATION",
+      payload: {
+        shipmentId: "IN-901",
+        destinationWarehouseId: "CHI",
+        expectedAvailableAt: "2026-08-09T09:00:00-05:00",
+        lines: [
+          {
+            shipmentLineId: "IN-901-L1",
+            sku: "BRG-440",
+            quantity: 4,
+          },
+        ],
+      },
+    };
 
-    const event = mapInboundShipmentDelayedRequest(request, fixedClock);
+    expect(mapOperationalEventRequest(request, fixedClock)).toEqual({
+      ...request,
+      receivedAt,
+    });
+  });
 
-    expect(event.payload).not.toHaveProperty("reason");
+  it("maps an InboundShipmentDelayed request", () => {
+    const request: InboundShipmentDelayedRequest = {
+      eventId: "EVT-INBOUND-901-DELAYED",
+      eventType: "InboundShipmentDelayed",
+      occurredAt: "2026-08-07T12:00:00-05:00",
+      source: "TRANSPORTATION_INTEGRATION",
+      payload: {
+        shipmentId: "IN-901",
+        previousExpectedAvailableAt: "2026-08-09T09:00:00-05:00",
+        newExpectedAvailableAt: "2026-08-11T09:00:00-05:00",
+        reason: "Carrier delay",
+      },
+    };
+
+    expect(mapOperationalEventRequest(request, fixedClock)).toEqual({
+      ...request,
+      receivedAt,
+    });
   });
 });
