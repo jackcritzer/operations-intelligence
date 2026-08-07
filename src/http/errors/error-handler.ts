@@ -1,3 +1,4 @@
+import { EventApplicationError } from "../../application/errors/event-application-error.js";
 interface FastifyValidationError extends Error {
   code: string;
   validation: unknown;
@@ -25,4 +26,20 @@ export function isHttpError(error: unknown): error is HttpError {
     "statusCode" in error &&
     typeof error.statusCode === "number"
   );
+}
+
+export function statusForEventApplicationError(
+  error: EventApplicationError,
+): number {
+  switch (error.code) {
+    case "ORDER_ALREADY_EXISTS":
+    case "INVENTORY_POSITION_ALREADY_EXISTS":
+    case "INBOUND_SHIPMENT_ALREADY_EXISTS":
+    case "INBOUND_SHIPMENT_NOT_FOUND":
+    case "INBOUND_SHIPMENT_EXPECTATION_MISMATCH":
+      return 409;
+
+    case "INVALID_EVENT_DATA":
+      return 422;
+  }
 }

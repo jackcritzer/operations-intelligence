@@ -5,11 +5,11 @@ import { OperationalState } from "../state/operational-state.js";
 import { createEmptyOperationalState } from "../state/operational-state.js";
 import { registerOperationalEventRoutes } from "./routes/operational-events.route.js";
 import { isHttpError } from "./errors/error-handler.js";
+import { EventApplicationError } from "../application/errors/event-application-error.js";
 import {
-  EventApplicationError,
+  isFastifyValidationError,
   statusForEventApplicationError,
-} from "../application/errors/event-application-error.js";
-import { isFastifyValidationError } from "./errors/error-handler.js";
+} from "./errors/error-handler.js";
 export interface BuildAppOptions {
   state?: OperationalState;
   clock?: Clock;

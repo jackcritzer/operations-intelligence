@@ -13,7 +13,7 @@
     "scenario": "tsx src/scenarios/cli.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run format && npm test && npm run scenario && npm run typecheck && npm run format:check"
+    "verify": "npm run format:check && npm test && npm run scenario && npm run typecheck"
   },
   "repository": {
     "type": "git",

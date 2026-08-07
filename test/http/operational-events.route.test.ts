@@ -146,5 +146,12 @@ describe("POST /v1/operational-events", () => {
     });
 
     expect(response.statusCode).toBe(400);
+
+    expect(response.json()).toEqual(
+      expect.objectContaining({
+        statusCode: 400,
+        code: "FST_ERR_CTP_INVALID_JSON_BODY",
+      }),
+    );
   });
 });
