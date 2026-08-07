@@ -7,7 +7,7 @@ import {
   type ShipmentAvailabilityChange,
   type CustomerOrder,
 } from "./operational-state.js";
-import { EventApplicationError } from "../http/errors/error-handler.js";
+import { EventApplicationError } from "../application/errors/event-application-error.js";
 
 export function applyEvent(
   state: OperationalState,
@@ -99,7 +99,8 @@ function applyInventoryPositionReported(
   if (event.payload.reservedQuantity > event.payload.usableQuantity) {
     throw new EventApplicationError({
       code: "INVALID_EVENT_DATA",
-      message: `Reserved quantity cannot exceed usable quantity for ` +
+      message:
+        `Reserved quantity cannot exceed usable quantity for ` +
         `${event.payload.warehouseId}:${event.payload.sku}`,
       details: {
         eventId: event.eventId,
@@ -147,7 +148,7 @@ function applyInboundShipmentConfirmed(
   if (state.inboundShipments.has(event.payload.shipmentId)) {
     throw new EventApplicationError({
       code: "INBOUND_SHIPMENT_ALREADY_EXISTS",
-      message:`Inbound shipment ${event.payload.shipmentId} already exists`,
+      message: `Inbound shipment ${event.payload.shipmentId} already exists`,
       details: {
         eventId: event.eventId,
         eventType: event.eventType,
@@ -175,7 +176,7 @@ function applyInboundShipmentConfirmed(
     })),
     event.eventId,
     event.eventType,
-    event.payload.shipmentId
+    event.payload.shipmentId,
   );
 
   const shipment: InboundShipment = {
@@ -206,8 +207,8 @@ function applyInboundShipmentDelayed(
         eventId: event.eventId,
         eventType: event.eventType,
         shipmentId: event.payload.shipmentId,
-    },
-  });
+      },
+    });
   }
 
   // Confirm that the event was based on the current shipment state.
@@ -217,7 +218,8 @@ function applyInboundShipmentDelayed(
   ) {
     throw new EventApplicationError({
       code: "INBOUND_SHIPMENT_EXPECTATION_MISMATCH",
-      message: `Shipment ${shipment.shipmentId} expected availability does not match ` +
+      message:
+        `Shipment ${shipment.shipmentId} expected availability does not match ` +
         `the delay event's previous value`,
       details: {
         eventId: event.eventId,
@@ -275,8 +277,6 @@ function validatePositiveQuantities(
   eventType?: string,
   shipmentId?: string,
 ): void {
-
-
   for (const value of values) {
     if (!Number.isInteger(value.quantity) || value.quantity <= 0) {
       throw new EventApplicationError({
