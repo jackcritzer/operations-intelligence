@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import { type TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
-import { systemClock, type Clock } from "./mappers/operational-event.mapper.js";
+import { type Clock } from "./mappers/operational-event.mapper.js";
 import { OperationalState } from "../state/operational-state.js";
 import { createEmptyOperationalState } from "../state/operational-state.js";
 import { registerOperationalEventRoutes } from "./routes/operational-events.route.js";
@@ -10,6 +10,10 @@ import {
   isFastifyValidationError,
   statusForEventApplicationError,
 } from "./errors/error-handler.js";
+
+export const systemClock: Clock = {
+  now: () => new Date(),
+};
 export interface BuildAppOptions {
   state?: OperationalState;
   clock?: Clock;

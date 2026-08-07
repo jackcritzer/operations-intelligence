@@ -9,12 +9,14 @@ import {
 } from "./operational-state.js";
 import { EventApplicationError } from "../application/errors/event-application-error.js";
 
+export type ApplyEventResult = { status: "APPLIED" } | { status: "DUPLICATE" };
+
 export function applyEvent(
   state: OperationalState,
   event: OperationalEvent,
-): void {
+): ApplyEventResult {
   if (state.processedEventIds.has(event.eventId)) {
-    return;
+    return { status: "DUPLICATE" };
   }
 
   switch (event.eventType) {
@@ -39,6 +41,8 @@ export function applyEvent(
   }
 
   state.processedEventIds.add(event.eventId);
+
+  return { status: "APPLIED" };
 }
 
 function applyOrderPlaced(
