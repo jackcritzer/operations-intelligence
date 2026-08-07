@@ -13,6 +13,7 @@ import {
   inventoryPositionKey,
 } from "../src/state/operational-state.js";
 import { EventApplicationError } from "../src/application/errors/event-application-error.js";
+import type { OperationalEvent } from "../src/events/operational-event.js";
 
 type EventOverrides<TEvent extends { payload: object }> = Omit<
   Partial<TEvent>,
@@ -204,6 +205,35 @@ describe("applyEvent", () => {
         }),
       ),
     ).toThrow(/delay must move availability later/);
+  });
+
+  it("returns DUPLICATE without applying an event twice", () => {
+    const state = createEmptyOperationalState();
+
+    const event: OperationalEvent = {
+      eventId: "inventory-reported-1",
+      eventType: "InventoryPositionReported",
+      occurredAt: "2026-08-01T10:00:00-05:00",
+      receivedAt: "2026-08-01T10:00:01-05:00",
+      source: "WMS",
+      payload: {
+        warehouseId: "CHI",
+        sku: "BRG-440",
+        usableQuantity: 4,
+        reservedQuantity: 0,
+        unusableQuantity: 0,
+      },
+    };
+
+    expect(applyEvent(state, event)).toEqual({
+      status: "APPLIED",
+    });
+
+    expect(applyEvent(state, event)).toEqual({
+      status: "DUPLICATE",
+    });
+
+    expect(state.processedEventIds).toEqual(new Set(["inventory-reported-1"]));
   });
 });
 

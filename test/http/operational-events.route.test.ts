@@ -8,7 +8,6 @@ import {
   inventoryPositionKey,
 } from "../../src/state/operational-state.js";
 import type { Clock } from "../../src/http/mappers/operational-event.mapper.js";
-import type { OperationalEvent } from "../../src/events/operational-event.js";
 
 const fixedClock: Clock = {
   now: () => new Date("2026-08-03T17:00:01.123Z"),
@@ -278,35 +277,6 @@ describe("POST /v1/operational-events", () => {
         usableQuantity: 4,
       }),
     );
-  });
-
-  it("returns DUPLICATE without applying an event twice", () => {
-    const state = createEmptyOperationalState();
-
-    const event: OperationalEvent = {
-      eventId: "inventory-reported-1",
-      eventType: "InventoryPositionReported",
-      occurredAt: "2026-08-01T10:00:00-05:00",
-      receivedAt: "2026-08-01T10:00:01-05:00",
-      source: "WMS",
-      payload: {
-        warehouseId: "CHI",
-        sku: "BRG-440",
-        usableQuantity: 4,
-        reservedQuantity: 0,
-        unusableQuantity: 0,
-      },
-    };
-
-    expect(applyEvent(state, event)).toEqual({
-      status: "APPLIED",
-    });
-
-    expect(applyEvent(state, event)).toEqual({
-      status: "DUPLICATE",
-    });
-
-    expect(state.processedEventIds).toEqual(new Set(["inventory-reported-1"]));
   });
 
   it("reports a previously processed event as a duplicate", async () => {
