@@ -25,10 +25,7 @@ function createRequest(): InboundShipmentDelayedRequest {
 
 describe("mapInboundShipmentDelayedRequest", () => {
   it("maps the HTTP request into a domain event", () => {
-    const event = mapInboundShipmentDelayedRequest(
-      createRequest(),
-      fixedClock,
-    );
+    const event = mapInboundShipmentDelayedRequest(createRequest(), fixedClock);
 
     expect(event).toEqual({
       eventId: "delay-1",

@@ -7,11 +7,12 @@ import type {
   InboundShipmentDelayedEvent,
 } from "../src/events/operational-event.js";
 
-import { applyEvent, EventApplicationError } from "../src/state/apply-event.js";
+import { applyEvent } from "../src/state/apply-event.js";
 import {
   createEmptyOperationalState,
   inventoryPositionKey,
 } from "../src/state/operational-state.js";
+import { EventApplicationError } from "../src/http/errors/error-handler.js";
 
 type EventOverrides<TEvent extends { payload: object }> = Omit<
   Partial<TEvent>,

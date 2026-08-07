@@ -21,8 +21,7 @@ export function mapInboundShipmentDelayedRequest(
     source: request.source,
     payload: {
       shipmentId: request.payload.shipmentId,
-      previousExpectedAvailableAt:
-        request.payload.previousExpectedAvailableAt,
+      previousExpectedAvailableAt: request.payload.previousExpectedAvailableAt,
       newExpectedAvailableAt: request.payload.newExpectedAvailableAt,
       ...(request.payload.reason === undefined
         ? {}
