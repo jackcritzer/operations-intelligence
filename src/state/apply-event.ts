@@ -7,13 +7,7 @@ import {
   type ShipmentAvailabilityChange,
   type CustomerOrder,
 } from "./operational-state.js";
-
-export class EventApplicationError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "EventApplicationError";
-  }
-}
+import { EventApplicationError } from "../application/errors/event-application-error.js";
 
 export function applyEvent(
   state: OperationalState,
@@ -52,15 +46,27 @@ function applyOrderPlaced(
   event: Extract<OperationalEvent, { eventType: "OrderPlaced" }>,
 ): void {
   if (event.payload.lines.length === 0) {
-    throw new EventApplicationError(
-      `Order ${event.payload.orderId} must contain at least one line`,
-    );
+    throw new EventApplicationError({
+      code: "INVALID_EVENT_DATA",
+      message: `Order ${event.payload.orderId} must contain at least one line`,
+      details: {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        orderId: event.payload.orderId,
+      },
+    });
   }
 
   if (state.orders.has(event.payload.orderId)) {
-    throw new EventApplicationError(
-      `Order ${event.payload.orderId} already exists`,
-    );
+    throw new EventApplicationError({
+      code: "ORDER_ALREADY_EXISTS",
+      message: `Order ${event.payload.orderId} already exists`,
+      details: {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        orderId: event.payload.orderId,
+      },
+    });
   }
 
   validatePositiveQuantities(
@@ -91,10 +97,18 @@ function applyInventoryPositionReported(
   event: Extract<OperationalEvent, { eventType: "InventoryPositionReported" }>,
 ): void {
   if (event.payload.reservedQuantity > event.payload.usableQuantity) {
-    throw new EventApplicationError(
-      `Reserved quantity cannot exceed usable quantity for ` +
+    throw new EventApplicationError({
+      code: "INVALID_EVENT_DATA",
+      message:
+        `Reserved quantity cannot exceed usable quantity for ` +
         `${event.payload.warehouseId}:${event.payload.sku}`,
-    );
+      details: {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        warehouseId: event.payload.warehouseId,
+        sku: event.payload.sku,
+      },
+    });
   }
 
   validateNonNegativeQuantities([
@@ -132,15 +146,27 @@ function applyInboundShipmentConfirmed(
   event: Extract<OperationalEvent, { eventType: "InboundShipmentConfirmed" }>,
 ): void {
   if (state.inboundShipments.has(event.payload.shipmentId)) {
-    throw new EventApplicationError(
-      `Inbound shipment ${event.payload.shipmentId} already exists`,
-    );
+    throw new EventApplicationError({
+      code: "INBOUND_SHIPMENT_ALREADY_EXISTS",
+      message: `Inbound shipment ${event.payload.shipmentId} already exists`,
+      details: {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        shipmentId: event.payload.shipmentId,
+      },
+    });
   }
 
   if (event.payload.lines.length === 0) {
-    throw new EventApplicationError(
-      `Inbound shipment ${event.payload.shipmentId} must contain at least one line`,
-    );
+    throw new EventApplicationError({
+      code: "INVALID_EVENT_DATA",
+      message: `Inbound shipment ${event.payload.shipmentId} must contain at least one line`,
+      details: {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        shipmentId: event.payload.shipmentId,
+      },
+    });
   }
 
   validatePositiveQuantities(
@@ -148,6 +174,9 @@ function applyInboundShipmentConfirmed(
       name: `Shipment line ${line.shipmentLineId}`,
       quantity: line.quantity,
     })),
+    event.eventId,
+    event.eventType,
+    event.payload.shipmentId,
   );
 
   const shipment: InboundShipment = {
@@ -171,9 +200,15 @@ function applyInboundShipmentDelayed(
 ): void {
   const shipment = state.inboundShipments.get(event.payload.shipmentId);
   if (!shipment) {
-    throw new EventApplicationError(
-      `Cannot delay unknown inbound shipment ${event.payload.shipmentId}`,
-    );
+    throw new EventApplicationError({
+      code: "INBOUND_SHIPMENT_NOT_FOUND",
+      message: `Inbound shipment ${event.payload.shipmentId} does not exist`,
+      details: {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        shipmentId: event.payload.shipmentId,
+      },
+    });
   }
 
   // Confirm that the event was based on the current shipment state.
@@ -181,10 +216,17 @@ function applyInboundShipmentDelayed(
   if (
     shipment.expectedAvailableAt !== event.payload.previousExpectedAvailableAt
   ) {
-    throw new EventApplicationError(
-      `Shipment ${shipment.shipmentId} expected availability does not match ` +
+    throw new EventApplicationError({
+      code: "INBOUND_SHIPMENT_EXPECTATION_MISMATCH",
+      message:
+        `Shipment ${shipment.shipmentId} expected availability does not match ` +
         `the delay event's previous value`,
-    );
+      details: {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        shipmentId: event.payload.shipmentId,
+      },
+    });
   }
 
   if (
@@ -197,9 +239,15 @@ function applyInboundShipmentDelayed(
       "Previous expected availability",
     )
   ) {
-    throw new EventApplicationError(
-      `Shipment ${shipment.shipmentId} delay must move availability later`,
-    );
+    throw new EventApplicationError({
+      code: "INVALID_EVENT_DATA",
+      message: `Shipment ${shipment.shipmentId} delay must move availability later`,
+      details: {
+        eventId: event.eventId,
+        eventType: event.eventType,
+        shipmentId: event.payload.shipmentId,
+      },
+    });
   }
 
   const updatedShipment: InboundShipment = {
@@ -224,40 +272,62 @@ function applyInboundShipmentDelayed(
 }
 
 function validatePositiveQuantities(
-  values: Array<{ name: string; quantity: number }>,
+  values: Array<{ name: string; quantity: number }> = [],
+  eventId?: string,
+  eventType?: string,
+  shipmentId?: string,
 ): void {
   for (const value of values) {
     if (!Number.isInteger(value.quantity) || value.quantity <= 0) {
-      throw new EventApplicationError(
-        `${value.name} quantity must be a positive integer`,
-      );
+      throw new EventApplicationError({
+        code: "INVALID_EVENT_DATA",
+        message: `${value.name} quantity must be a positive integer`,
+        details: {
+          eventId: eventId,
+          eventType: eventType,
+          shipmentId: shipmentId,
+        },
+      });
     }
   }
 }
 
 function validateNonNegativeQuantities(
   values: Array<{ name: string; quantity: number }>,
+  eventId?: string,
+  eventType?: string,
+  shipmentId?: string,
 ): void {
   for (const value of values) {
     if (!Number.isInteger(value.quantity) || value.quantity < 0) {
-      throw new EventApplicationError(
-        `${value.name} must be a non-negative integer`,
-      );
+      throw new EventApplicationError({
+        code: "INVALID_EVENT_DATA",
+        message: `${value.name} must be a non-negative integer`,
+        details: {
+          eventId: eventId,
+          eventType: eventType,
+          shipmentId: shipmentId,
+        },
+      });
     }
   }
 }
 
 function assertNever(value: never): never {
-  throw new EventApplicationError(
-    `Unsupported event: ${JSON.stringify(value)}`,
-  );
+  throw new EventApplicationError({
+    code: "INVALID_EVENT_DATA",
+    message: `Unsupported event: ${JSON.stringify(value)}`,
+  });
 }
 
 function parseTimestamp(value: string, fieldName: string): number {
   const parsed = Date.parse(value);
 
   if (Number.isNaN(parsed)) {
-    throw new EventApplicationError(`${fieldName} must be a valid timestamp`);
+    throw new EventApplicationError({
+      code: "INVALID_EVENT_DATA",
+      message: `${fieldName} must be a valid timestamp`,
+    });
   }
 
   return parsed;

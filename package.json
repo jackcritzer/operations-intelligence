@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit",
     "scenario": "tsx src/scenarios/cli.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "verify": "npm run format:check && npm test && npm run scenario && npm run typecheck"
   },
   "repository": {
     "type": "git",
@@ -29,9 +30,16 @@
   "homepage": "https://github.com/jackcritzer/operations-intelligence#readme",
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "prettier": "^3.9.6",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
     "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@fastify/type-provider-typebox": "^6.1.0",
+    "@sinclair/typebox": "^0.34.52",
+    "fastify": "^5.11.2"
   }
 }

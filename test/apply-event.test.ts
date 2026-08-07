@@ -7,11 +7,12 @@ import type {
   InboundShipmentDelayedEvent,
 } from "../src/events/operational-event.js";
 
-import { applyEvent, EventApplicationError } from "../src/state/apply-event.js";
+import { applyEvent } from "../src/state/apply-event.js";
 import {
   createEmptyOperationalState,
   inventoryPositionKey,
 } from "../src/state/operational-state.js";
+import { EventApplicationError } from "../src/application/errors/event-application-error.js";
 
 type EventOverrides<TEvent extends { payload: object }> = Omit<
   Partial<TEvent>,
@@ -167,7 +168,7 @@ describe("applyEvent", () => {
     const state = createEmptyOperationalState();
 
     expect(() => applyEvent(state, inboundShipmentDelayedEvent())).toThrow(
-      "Cannot delay unknown inbound shipment IN-900",
+      "Inbound shipment IN-900 does not exist",
     );
   });
 
