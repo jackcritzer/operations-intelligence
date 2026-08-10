@@ -218,17 +218,24 @@ I started with a business question rather than an API or database schema. I mode
 
 I implemented deterministic demand priority, a calculation-local supply pool, structured supply contributions, blocking conditions, and triggering changes. When blocking evidence overlaps, the engine attributes the shortfall according to explanatory strength and only reports a shipment delay as a trigger when it moved supply across the assessed order’s deadline. The executable scenario demonstrates an order moving from blocked to fulfillable and back to blocked when inbound availability crosses its deadline.
 
-The current result is an in-memory domain engine, not yet a production service. Its value is that the core business behavior and explanation contracts are explicit and tested before HTTP and persistence concerns are added.
+The current result is an in-memory HTTP service, not yet a durable production backend. The core business behavior and explanation contracts are explicit and tested through domain, application, and HTTP boundaries before persistence and concurrency concerns are introduced.
 
 ## Follow-up work
 
-Near-term system work:
+Near-term product work:
 
-1. Define validated HTTP contracts for event submission and fulfillment queries.
-2. Persist accepted events with durable idempotency.
-3. Rebuild state through deterministic replay.
-4. Preserve complete shipment-change history for explanations across successive delays.
-5. Add structured errors, logging, deployment, and basic observability.
+1. Compare fulfillment assessments before and after an operational event.
+2. Identify orders that became blocked, became fulfillable, or materially changed while retaining the same status.
+3. Return the impact of an accepted event through the application and HTTP boundaries.
+
+Later production work:
+
+1. Persist accepted events with durable idempotency.
+2. Rebuild operational state through deterministic replay.
+3. Preserve complete shipment-change history across successive delays.
+4. Define transactional behavior for concurrent ingestion.
+5. Add event and impact history queries.
+6. Add structured logging, metrics, readiness checks, deployment, and operational documentation.
 
 Future operational questions include:
 
