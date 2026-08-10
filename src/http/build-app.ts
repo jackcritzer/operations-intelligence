@@ -10,6 +10,7 @@ import {
   isFastifyValidationError,
   statusForEventApplicationError,
 } from "./errors/error-handler.js";
+import { registerFulfillmentAssessmentsRoutes } from "./routes/fulfillment-assessments.route.js";
 
 export const systemClock: Clock = {
   now: () => new Date(),
@@ -72,6 +73,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   registerOperationalEventRoutes(app, {
     state,
     clock,
+  });
+
+  registerFulfillmentAssessmentsRoutes(app, {
+    state,
   });
 
   return app;
