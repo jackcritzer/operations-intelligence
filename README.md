@@ -150,23 +150,47 @@ Required ship time: 2026-08-08T17:00:00-05:00
     Trigger: IN-900 delayed from 2026-08-06T09:00:00-05:00 to 2026-08-11T09:00:00-05:00
 ```
 
-A later HTTP interface will receive events from upstream systems and expose current fulfillment assessments to clients.
+The HTTP interface accepts normalized events from simulated upstream systems and exposes the resulting current fulfillment assessments to clients.
+
+## HTTP API
+
+Create an application instance with `buildApp()` and submit normalized events through:
+
+```http
+POST /v1/operational-events
+```
+
+Query the resulting current assessment through:
+
+```http
+GET /v1/fulfillment-assessments
+```
+
+The ingestion and query routes operate against the same in-memory operational state.
+
+The HTTP boundary is covered by an end-to-end test that submits operational events and verifies the resulting explainable fulfillment assessment.
 
 ## Current status
 
-The in-memory fulfillment core for the first vertical slice is implemented.
+The first vertical slice is complete as an in-memory HTTP service.
 
 The system currently:
 
-- applies order, inventory, inbound-shipment, and shipment-delay events to operational state;
+- accepts normalized operational events through `POST /v1/operational-events`;
+- validates request structure and maps accepted requests into domain events;
+- applies order, inventory-position, inbound-shipment, and shipment-delay events to shared operational state;
+- treats a previously processed event ID as a duplicate;
 - allocates on-hand and timely inbound supply by deterministic demand priority;
+- exposes current results through `GET /v1/fulfillment-assessments`;
 - reports order- and line-level fulfillment status, projected allocation, and shortfall;
 - explains late inbound supply, supply consumed by higher-priority demand, and undetermined shortfalls;
 - attributes overlapping blocker evidence without exceeding the projected shortfall;
 - preserves a shipment delay as a triggering change only when it moves inbound supply from timely to late for the assessed order;
-- runs all four documented fulfillment scenarios from the same definitions used by the parameterized acceptance test.
+- runs all documented fulfillment scenarios from the same definitions used by the acceptance tests.
 
-PostgreSQL persistence, external event ingestion, and an HTTP API are intentionally deferred until after this engine checkpoint.
+The current service stores operational state only in memory. Accepted events and derived state do not survive process restart, and concurrent ingestion is not yet protected by durable transactional boundaries.
+
+The next capability will compare fulfillment assessments before and after an event so the engine can identify which customer commitments changed because of that event.
 
 ## Documentation
 

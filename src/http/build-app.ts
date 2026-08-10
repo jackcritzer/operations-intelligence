@@ -1,16 +1,19 @@
-import Fastify, { type FastifyInstance } from "fastify";
 import { type TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
-import { type Clock } from "./mappers/operational-event.mapper.js";
-import { OperationalState } from "../state/operational-state.js";
-import { createEmptyOperationalState } from "../state/operational-state.js";
-import { registerOperationalEventRoutes } from "./routes/operational-events.route.js";
-import { isHttpError } from "./errors/error-handler.js";
+import Fastify, { type FastifyInstance } from "fastify";
+
 import { EventApplicationError } from "../application/errors/event-application-error.js";
 import {
+  createEmptyOperationalState,
+  type OperationalState,
+} from "../state/operational-state.js";
+import {
   isFastifyValidationError,
+  isHttpError,
   statusForEventApplicationError,
 } from "./errors/error-handler.js";
+import { type Clock } from "./mappers/operational-event.mapper.js";
 import { registerFulfillmentAssessmentsRoutes } from "./routes/fulfillment-assessments.route.js";
+import { registerOperationalEventRoutes } from "./routes/operational-events.route.js";
 
 export const systemClock: Clock = {
   now: () => new Date(),
