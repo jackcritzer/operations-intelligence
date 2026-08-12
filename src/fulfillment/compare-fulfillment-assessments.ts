@@ -27,8 +27,6 @@ export function compareFulfillmentAssessments(
       const beforeOrder = beforeByOrderId.get(orderId);
       const afterOrder = afterByOrderId.get(orderId);
 
-      // Determine the change type based on the presence of assessments
-      let type: OrderFulfillmentChangeType;
       if (!beforeOrder && afterOrder) {
         return [
           {
