@@ -99,7 +99,7 @@ const TriggeringChangeSchema = Type.Object(
   },
 );
 
-const OrderLineFulfillmentAssessmentSchema = Type.Object(
+export const OrderLineFulfillmentAssessmentSchema = Type.Object(
   {
     orderLineId: NonBlankStringSchema,
     sku: NonBlankStringSchema,
@@ -117,18 +117,20 @@ const OrderLineFulfillmentAssessmentSchema = Type.Object(
   },
 );
 
+export const OrderFulfillmentAssessmentSchema = Type.Object(
+  {
+    orderId: NonBlankStringSchema,
+    requiredShipAt: TimestampSchema,
+    status: FulfillmentStatusSchema,
+    lines: Type.Array(OrderLineFulfillmentAssessmentSchema),
+  },
+  {
+    additionalProperties: false,
+  },
+);
+
 export const FulfillmentAssessmentsResponseSchema = Type.Array(
-  Type.Object(
-    {
-      orderId: NonBlankStringSchema,
-      requiredShipAt: TimestampSchema,
-      status: FulfillmentStatusSchema,
-      lines: Type.Array(OrderLineFulfillmentAssessmentSchema),
-    },
-    {
-      additionalProperties: false,
-    },
-  ),
+  OrderFulfillmentAssessmentSchema,
 );
 
 export type FulfillmentAssessmentsResponse = Static<
