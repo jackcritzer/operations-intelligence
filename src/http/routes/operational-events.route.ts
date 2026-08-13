@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 
-import { applyEvent } from "../../state/apply-event.js";
+import { processOperationalEvent } from "../../application/process-operational-event.js";
 import type { OperationalState } from "../../state/operational-state.js";
 import {
   mapOperationalEventRequest,
@@ -10,6 +10,10 @@ import {
   OperationalEventRequestSchema,
   type OperationalEventRequest,
 } from "../schemas/operational-event.schema.js";
+import {
+  OperationalEventResponseSchema,
+  type OperationalEventResponse,
+} from "../schemas/operational-event-response.schema.js";
 
 export interface OperationalEventRouteDependencies {
   state: OperationalState;
@@ -22,11 +26,15 @@ export function registerOperationalEventRoutes(
 ): void {
   app.post<{
     Body: OperationalEventRequest;
+    Reply: OperationalEventResponse;
   }>(
     "/v1/operational-events",
     {
       schema: {
         body: OperationalEventRequestSchema,
+        response: {
+          200: OperationalEventResponseSchema,
+        },
       },
     },
     async (request, reply) => {
@@ -35,12 +43,12 @@ export function registerOperationalEventRoutes(
         dependencies.clock,
       );
 
-      const result = applyEvent(dependencies.state, event);
+      const result: OperationalEventResponse = processOperationalEvent(
+        dependencies.state,
+        event,
+      );
 
-      return reply.code(200).send({
-        eventId: event.eventId,
-        status: result.status,
-      });
+      return reply.code(200).send(result);
     },
   );
 }
