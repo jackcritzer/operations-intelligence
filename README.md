@@ -27,7 +27,7 @@ flowchart LR
 
 The order must ship by August 10. Before the delay, four inbound units are expected on August 9 and complete its projected allocation. When the shipment moves to August 11, those units become too late and the order becomes blocked.
 
-The event-ingestion response identifies the transition and preserves its evidence:
+The event-ingestion response identifies the transition and preserves its evidence. This abridged example highlights the material changes; the actual response includes complete before-and-after order and line assessments:
 
 ```json
 {
@@ -81,11 +81,12 @@ The complete scenario is implemented as an executable specification, focused tes
 
 ```mermaid
 flowchart TD
-    A["Normalized operational event"] --> B["Validate and apply event"]
-    B --> C["Current operational state"]
-    C --> D["Calculate fulfillment assessments"]
-    D --> E["Compare before and after"]
-    E --> F["Current assessment and event impact APIs"]
+    A["POST normalized event"] --> B["Validate and map"]
+    B --> C["Calculate assessments before"]
+    C --> D["Apply to operational state"]
+    D --> E["Calculate assessments after"]
+    E --> F["Compare and return event impact"]
+    D --> G["GET current assessments"]
 ```
 
 Events represent facts learned from upstream systems. The engine maintains a current operational projection, allocates matching supply across prioritized demand, and produces structured explanations for its conclusions.
@@ -139,16 +140,16 @@ npm run scenario -- shipment-delay-blocks-order
 
 ## Current business rules
 
-| Rule | Current behavior |
-|---|---|
-| Warehouse scope | Each order line uses one fulfillment warehouse; supply does not move between warehouses. |
-| On-hand availability | `max(0, usableQuantity - reservedQuantity)`; unusable inventory does not contribute. |
-| Inbound eligibility | Confirmed inbound supply contributes only when available by the required ship time. |
-| Demand priority | Earlier required ship time, then earlier placement time; IDs provide deterministic tie-breaking. |
-| Supply use | On-hand supply is allocated before timely inbound supply. |
-| Order status | An order is fulfillable only when every line has zero projected shortfall. |
-| Explanation | Structured blocker quantities account for the shortfall without exceeding it. |
-| Projection boundary | Projected allocation does not create an upstream reservation. |
+| Rule                 | Current behavior                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| Warehouse scope      | Each order line uses one fulfillment warehouse; supply does not move between warehouses.         |
+| On-hand availability | `max(0, usableQuantity - reservedQuantity)`; unusable inventory does not contribute.             |
+| Inbound eligibility  | Confirmed inbound supply contributes only when available by the required ship time.              |
+| Demand priority      | Earlier required ship time, then earlier placement time; IDs provide deterministic tie-breaking. |
+| Supply use           | On-hand supply is allocated before timely inbound supply.                                        |
+| Order status         | An order is fulfillable only when every line has zero projected shortfall.                       |
+| Explanation          | Structured blocker quantities account for the shortfall without exceeding it.                    |
+| Projection boundary  | Projected allocation does not create an upstream reservation.                                    |
 
 ## Current limitations
 
@@ -167,7 +168,7 @@ The committed next milestone is durable operational state: persist accepted even
 - [`docs/ecosystem.md`](docs/ecosystem.md) — upstream systems and the engine's place in the operational ecosystem
 - [`docs/product-journey.md`](docs/product-journey.md) — journey of one industrial product from supplier to customer
 - [`docs/vertical-slice-01.md`](docs/vertical-slice-01.md) — first vertical-slice specification
-- [`docs/fulfillment-rules.md`](docs/fulfillment-rules.md) — allocation and explanation rules
+- [`docs/architecture/fulfillment-engine.md`](docs/architecture/fulfillment-engine.md) — fulfillment engine structure and allocation flow
 - [`docs/scenarios/`](docs/scenarios/) — documented executable business scenarios
 - [`docs/journal/01-unfulfillable-orders.md`](docs/journal/01-unfulfillable-orders.md) — engineering decisions, discoveries, and implementation notes
 - [`docs/roadmap.md`](docs/roadmap.md) — completed, committed, candidate, and deferred milestones
@@ -181,4 +182,3 @@ The committed next milestone is durable operational state: persist accepted even
 - Vitest
 - GitHub Actions
 - PostgreSQL planned for the next milestone
-

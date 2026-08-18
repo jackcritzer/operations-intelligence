@@ -226,4 +226,3 @@ These require new business scenarios and rules:
 - a generalized plugin framework for business rules.
 
 The existing explicit rules should reveal the correct extension boundaries before a generalized rule system is designed.
-
