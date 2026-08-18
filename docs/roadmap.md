@@ -2,13 +2,18 @@
 
 ## Purpose
 
-This roadmap sequences work by operational capability rather than technical layer.
+This roadmap sequences work by operational capability and system guarantee rather than by technology.
 
-Each product slice begins with a business question, extends the engine only as required to answer it, and carries that answer through domain, application, and HTTP boundaries.
+Each milestone must answer a business or operational question, make a testable guarantee, and justify any new infrastructure it introduces.
 
-Infrastructure is introduced when it protects or preserves an established business capability.
+Milestones are labeled as:
 
-## Completed milestone: Current fulfillment assessment
+- **Completed** — implemented and verified.
+- **Committed next** — selected as the next major capability.
+- **Candidate** — valuable, but reassessed after the preceding milestone.
+- **Deferred pending evidence** — introduced only when a concrete requirement justifies the additional system boundary.
+
+## Completed: Current fulfillment assessment
 
 ### Business question
 
@@ -18,157 +23,201 @@ Infrastructure is introduced when it protects or preserves an established busine
 
 The service can:
 
-- ingest normalized order, inventory, inbound-shipment, and shipment-delay events;
+- ingest normalized order, inventory-position, inbound-shipment, and shipment-delay events;
 - maintain current operational state in memory;
 - project shared supply across competing customer demand;
-- expose current order- and line-level fulfillment assessments;
+- prevent projected double allocation;
+- expose order- and line-level fulfillment assessments;
 - identify projected allocations and shortfalls;
-- explain shortfalls using structured blocking conditions;
-- identify a shipment delay as a triggering change when it crossed an order deadline.
+- explain shortfalls using structured supply contributions, blocking conditions, and triggering changes.
 
-### Current boundaries
+### Current business boundaries
 
 - Each order line has one fulfillment warehouse.
 - Supply cannot move between warehouses.
 - Demand priority is earlier required ship time, then earlier placement time.
 - Order and line IDs provide deterministic tie-breaking only.
 - Projected allocation does not create an upstream inventory reservation.
-- State and processed event IDs exist only in memory.
-- Only the latest represented shipment availability change is retained.
+- Customers currently have no priority attributes.
 
-## Next milestone: Event impact
+## Completed: Immediate event impact
 
 ### Business question
 
 > When an operational event arrives, which customer-order fulfillment assessments changed because of it?
 
-A shipment delay is the initial concrete case:
+### Implemented capability
 
-> Which orders became blocked or otherwise deteriorated because this inbound shipment was delayed?
+The service now:
 
-### Phase 1: Assessment comparison
+1. calculates fulfillment assessments before a new event;
+2. applies the event to operational state;
+3. recalculates fulfillment afterward;
+4. compares the two assessment sets;
+5. returns the material changes through the ingestion API.
 
-Define a pure comparison model for fulfillment assessments.
+The comparison distinguishes:
 
-It must distinguish:
-
+- an added or removed order assessment;
 - an order becoming blocked;
 - an order becoming fulfillable;
-- an order remaining blocked while its projected shortfall changes;
-- an order retaining its status while line-level allocation changes;
-- unchanged orders, which should not appear in the result.
+- an order retaining its status while its allocation, shortfall, supply evidence, blocker evidence, triggering evidence, or required ship time changes;
+- unchanged orders, which are omitted.
 
-The comparison must preserve enough before-and-after information to explain the material change without recalculating it later.
+Complete before-and-after assessments are preserved in the impact result. Duplicate events do not report new impact, and rejected events do not return a partial impact result.
 
-### Phase 2: Event-impact orchestration
+The end-to-end HTTP scenario proves that delaying inbound supply beyond an order deadline changes the affected order from `FULFILLABLE` to `BLOCKED` and returns its resulting allocation, shortfall, blocker, and triggering change.
 
-Introduce an application operation that:
+## Committed next: Durable operational state
 
-1. calculates fulfillment assessments before an event;
-2. applies the event;
-3. calculates assessments after the event;
-4. compares the two assessment sets;
-5. returns event-application status and material fulfillment impact.
+### Operational question
 
-Duplicate events must not report new impact.
+> Can the service preserve and reconstruct its operational understanding across restarts?
 
-Failure to apply an event must not return a partially constructed impact result.
+### Intended guarantees
 
-### Phase 3: Event-impact HTTP contract
+The milestone should provide:
 
-Expose the application result through the operational-event ingestion boundary.
+- PostgreSQL storage for accepted normalized events;
+- durable event-ID uniqueness;
+- recognition of the same event ID and content as a duplicate;
+- rejection of an event ID reused with different content;
+- deterministic replay into operational state;
+- restart recovery that produces the same current fulfillment assessments;
+- an explicit transaction and failure boundary for event acceptance;
+- database-backed integration tests and local development infrastructure.
 
-The response should identify:
+### Design questions to resolve before implementation
 
-- the accepted event;
-- whether it was applied or recognized as a duplicate;
-- affected orders;
-- each material before-and-after change.
+- Is the accepted event log the durable source of truth?
+- Which data, if any, should be persisted in addition to accepted events?
+- What database-assigned sequence determines replay order?
+- How is normalized event content fingerprinted?
+- How can an event be validated and staged without partially mutating live state?
+- What happens if database persistence or in-memory application fails?
+- At what point is the service ready to answer queries during startup replay?
 
-The first end-to-end scenario should prove that delaying inbound supply beyond an order deadline changes the affected order from `FULFILLABLE` to `BLOCKED`.
+Assessments and event-impact results remain derived unless a later historical requirement justifies persisting them.
 
-## Production milestone: Durable operational state
+### Completion demonstration
 
-### Business question
+```text
+start service
+→ ingest operational events
+→ observe current assessment and event impact
+→ stop service
+→ restart service
+→ recover the same current assessment
+→ resend an accepted event
+→ receive DUPLICATE
+→ reuse its ID with different content
+→ receive a conflict
+```
 
-> Can the service preserve and recover its operational understanding across restarts and concurrent event delivery?
+## Candidate: Concurrency correctness
 
-### Persistence design
+### Operational question
 
-Decide:
+> Can the service remain correct when requests overlap or more than one instance processes events?
 
-- whether the accepted event log is the authoritative persisted record;
-- which derived projections, if any, are persisted;
-- how replay order is determined;
-- how invalid or out-of-order events are represented;
-- how event identity and payload conflicts are handled;
-- what transaction contains event acceptance and state projection.
+Potential work includes:
 
-### Durable ingestion
+- simultaneous duplicate delivery;
+- concurrent changes to the same shipment or inventory position;
+- query consistency during event acceptance;
+- transaction isolation and database-backed coordination;
+- projection versioning or synchronization across service instances;
+- controlled behavior during instance restart.
 
-Implement:
+This milestone will be designed after durable single-instance behavior reveals the actual consistency boundaries.
 
-- persistent accepted events;
-- durable idempotency;
-- detection of one event ID reused for different content;
-- deterministic state recovery;
-- transactional event application.
-
-### Concurrency correctness
-
-Define and test behavior when:
-
-- duplicate events arrive concurrently;
-- two updates affect the same shipment;
-- inventory reports for the same warehouse and SKU overlap;
-- a query executes while an event is being accepted.
-
-## Audit and history milestone
+## Candidate: Audit and impact history
 
 ### Business questions
 
 > What happened, when did it happen, and which customer commitments did it affect?
 
-Add:
+Potential work includes:
 
-- event-history queries;
+- accepted-event history;
 - event-impact history;
+- order fulfillment history;
 - complete shipment availability history;
-- traceability from a current blocker to relevant historical evidence.
+- traceability from a current blocker to historical evidence;
+- calculation or rule-version metadata for historical conclusions.
 
-Historical attribution must distinguish current conditions from the events that originally created them.
+Persisted assessment or impact snapshots become justified when the system must preserve what it concluded at a specific time rather than recalculate the answer using current rules.
 
-## Operational hardening milestone
+## Candidate: Impact explorer
 
-Prepare the service to run as a diagnosable backend:
+### User question
+
+> Can an operator quickly see how an event changed supply allocation and customer-order risk?
+
+A bounded visualization may provide:
+
+- an operational-event timeline;
+- current order status;
+- affected-order highlighting;
+- before-and-after allocation and shortfall;
+- blocker and triggering-change evidence;
+- replay of representative scenarios.
+
+This should remain a demonstration surface for the backend, not expand into a general administrative frontend.
+
+## Candidate: Operable deployment
+
+### Operational question
+
+> Can the service be deployed, observed, diagnosed, and recovered safely?
+
+Potential work includes:
 
 - structured request and event logging;
 - correlation identifiers;
 - health and readiness endpoints;
-- metrics for accepted, duplicate, rejected, and failed events;
-- latency metrics for ingestion and assessment calculation;
+- applied, duplicate, conflicting, rejected, and failed event metrics;
+- processing and calculation latency metrics;
 - configuration validation;
-- graceful shutdown;
-- deployment and recovery documentation.
+- graceful startup and shutdown;
+- migration, deployment, backup, and recovery procedures;
+- controlled database-outage behavior.
 
-## Portfolio release milestone
+## Portfolio checkpoints
 
-Make the system quickly evaluable by another engineer:
+After every committed milestone, reassess whether further work provides enough learning and portfolio value to justify its opportunity cost.
+
+A portfolio checkpoint should include:
 
 - concise setup instructions;
-- representative HTTP examples;
-- current architecture diagram;
-- documented business rules and limitations;
-- executable operational scenarios;
+- a visual explanation of the primary scenario;
+- representative HTTP behavior;
+- a current architecture diagram;
+- documented rules and limitations;
+- executable scenarios;
 - passing automated verification;
-- a clear explanation of design tradeoffs and deferred scope.
+- explicit design tradeoffs and deferred scope.
+
+## Deferred pending evidence
+
+The following technologies and architectural changes are not scheduled milestones by themselves:
+
+- Kafka or another message broker;
+- Redis;
+- microservice decomposition;
+- Kubernetes;
+- extensive cloud infrastructure;
+- persisted current assessments;
+- generalized caching.
+
+They should be introduced only when a concrete requirement—such as independent consumers, measured performance limits, cross-instance coordination, or deployment constraints—makes their additional consistency and operational costs worthwhile.
 
 ## Deferred product capabilities
 
-These should not be introduced until a business scenario requires them:
+These require new business scenarios and rules:
 
 - customer tiers or strategic-account priority;
-- expedite and manual-allocation rules;
+- expedite and manual-allocation policies;
 - inventory transfers between warehouses;
 - split fulfillment;
 - order cancellation and line changes;
@@ -177,3 +226,4 @@ These should not be introduced until a business scenario requires them:
 - a generalized plugin framework for business rules.
 
 The existing explicit rules should reveal the correct extension boundaries before a generalized rule system is designed.
+
