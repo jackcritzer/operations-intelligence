@@ -93,6 +93,16 @@ The calculator consumes explanatory quantities in four explicit phases: deadline
 
 The executable scenario recalculates fulfillment after each event and shows status transitions rather than only the final state.
 
+### Comparing immediate event impact
+
+A current assessment and an event impact answer different questions. The current assessment explains the network as represented now; event impact explains what materially changed across one accepted state transition.
+
+The application operation calculates assessments before an event, applies the event, calculates them again, and compares the two result sets. The comparison identifies orders that were added, removed, became blocked, became fulfillable, or retained their status while material details changed. Material details include allocation, shortfall, supply contributions, blocking conditions, triggering changes, and required ship time.
+
+Comparing only order status would miss meaningful deterioration such as a blocked order's shortfall increasing from two units to eight. It would also miss a change in operational evidence when quantities remain constant. Complete before-and-after assessments are retained so a consumer can explain the change without recalculating it.
+
+Event impact is returned by `POST /v1/operational-events`. Duplicate events return no new impact because they do not create another state transition. Failed events do not return a partially constructed impact result.
+
 ## Explainability challenges
 
 ### Avoiding unsupported conclusions
@@ -212,30 +222,40 @@ A fact can be relevant without being the best explanation. The engine must disti
 
 Executable business scenarios provide a different guarantee from focused unit tests. Unit tests establish individual calculation rules; scenarios establish that events, state transitions, allocation, explanations, and status changes form a coherent operational story. Converting the documented scenarios into executable specifications also exposed drift between the written rules and the implemented result contract.
 
+A current-state answer and a change answer require different models. Knowing that an order is blocked does not by itself establish what the latest event changed. Immediate impact requires preserving two complete assessments, defining which differences are operationally material, and excluding unaffected orders.
+
+Status alone is too coarse for impact analysis. An order can remain blocked while its shortfall worsens, its projected supply changes, or a previously undetermined shortage gains specific evidence. Added and removed assessments also need distinct classifications because an order that did not previously exist did not "become" fulfillable or blocked.
+
+This work also made idempotency part of the product result rather than only an ingestion optimization. A duplicate event must not report the original impact again because no new state transition occurred.
+
 ## Interview story
 
-I started with a business question rather than an API or database schema. I modeled orders, inventory, inbound supply, and delays as facts from separate operational systems. The main technical challenges were preventing double allocation across competing demand and producing explanations that did not claim more than the available evidence supported.
+I started with a business question rather than an API or database schema. I modeled orders, inventory, inbound supply, and delays as facts from separate operational systems. The first challenge was preventing double allocation across competing demand while producing explanations that did not claim more than the available evidence supported.
 
-I implemented deterministic demand priority, a calculation-local supply pool, structured supply contributions, blocking conditions, and triggering changes. When blocking evidence overlaps, the engine attributes the shortfall according to explanatory strength and only reports a shipment delay as a trigger when it moved supply across the assessed order’s deadline. The executable scenario demonstrates an order moving from blocked to fulfillable and back to blocked when inbound availability crosses its deadline.
+I implemented deterministic demand priority, a calculation-local supply pool, structured supply contributions, blocking conditions, and triggering changes. When blocking evidence overlaps, the engine attributes the shortfall according to explanatory strength and reports a shipment delay as a trigger only when it moved supply across the assessed order's deadline.
 
-The current result is an in-memory HTTP service, not yet a durable production backend. The core business behavior and explanation contracts are explicit and tested through domain, application, and HTTP boundaries before persistence and concurrency concerns are introduced.
+I then extended the engine from explaining current state to explaining immediate event impact. Event processing calculates assessments before and after an accepted event, compares the complete results, and returns only materially changed orders through the HTTP boundary. The end-to-end scenario demonstrates a shipment delay moving an order from `FULFILLABLE` to `BLOCKED`, including the lost inbound allocation, resulting shortfall, blocker, and triggering change.
+
+The current result is an in-memory HTTP service, not yet a durable production backend. Its business behavior and explanation contracts are explicit and tested across domain, application, and HTTP boundaries. The next milestone will persist accepted events and reconstruct operational state through deterministic replay.
 
 ## Follow-up work
 
-Near-term product work:
+### Committed next
 
-1. Compare fulfillment assessments before and after an operational event.
-2. Identify orders that became blocked, became fulfillable, or materially changed while retaining the same status.
-3. Return the impact of an accepted event through the application and HTTP boundaries.
+1. Design the accepted-event log as the durable system of record.
+2. Persist normalized events with durable identity and content-conflict detection.
+3. Rebuild operational state through deterministic replay after restart.
+4. Define the transaction and failure boundary between event persistence and state application.
+5. Add database-backed integration tests and local PostgreSQL infrastructure.
 
-Later production work:
+### Candidate later milestones
 
-1. Persist accepted events with durable idempotency.
-2. Rebuild operational state through deterministic replay.
-3. Preserve complete shipment-change history across successive delays.
-4. Define transactional behavior for concurrent ingestion.
-5. Add event and impact history queries.
-6. Add structured logging, metrics, readiness checks, deployment, and operational documentation.
+1. Define correctness under concurrent requests and multiple service instances.
+2. Add event, order, shipment, and impact-history queries where they answer concrete operational questions.
+3. Build a bounded impact explorer for event timelines and before-and-after fulfillment evidence.
+4. Add structured observability, readiness, graceful shutdown, deployment, backup, and recovery behavior.
+
+Kafka, Redis, microservices, Kubernetes, and other infrastructure remain deferred until a concrete scaling, coordination, or deployment requirement justifies them.
 
 Future operational questions include:
 

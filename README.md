@@ -1,226 +1,184 @@
 # Operations Intelligence Engine
 
-A production-oriented TypeScript backend that maintains an explainable view of operational state across an industrial distribution network.
-
-The engine consumes business events originating from systems such as order management, warehouse management, supplier, and transportation systems. It combines those facts to answer operational questions that no individual source system can answer alone.
+An explainable TypeScript backend that combines orders, warehouse inventory, inbound supply, and transportation events to identify customer commitments at risk.
 
 The project is organized around operational decisions rather than CRUD resources.
 
-## Primary user
+## What it answers
 
-The initial user is an operations coordinator responsible for ensuring customer orders ship on time.
+For an operations coordinator, the engine answers two related questions:
 
-Their work requires understanding disruptions across customer demand, warehouse inventory, inbound supply, and transportation without manually reconciling several independent systems.
+> Which open customer orders cannot currently be fulfilled by their required ship time, and why?
 
-## First operational question
+> When an operational event arrives, which fulfillment assessments changed because of it?
 
-> Which open customer orders cannot currently be fulfilled by their required ship date, and what operational conditions are preventing fulfillment?
+It returns structured evidence—not only a status—including projected allocation, shortfall, supply provenance, blocking conditions, and relevant triggering changes.
 
-The system must return more than a blocked status. It should explain:
-
-- which order lines are affected;
-- the required and available quantities;
-- the projected shortfall;
-- which inventory, reservation, or inbound-supply conditions caused it;
-- what changed to produce the current result.
-
-## Business context
-
-The initial domain is a midsize industrial distributor.
-
-The company:
-
-- purchases industrial products from suppliers;
-- stores inventory across multiple warehouses;
-- accepts customer orders containing one or more product lines;
-- commits available and expected supply to customer demand;
-- experiences shortages, supplier delays, inventory discrepancies, and competing orders;
-- needs operations employees to understand which customer commitments are at risk.
-
-The distributor's customers are primarily other businesses. A delayed industrial component may prevent a factory, repair company, construction operation, or other customer from completing its own work.
-
-## Where the engine fits
-
-Existing operational systems remain authoritative for the business facts they manage.
-
-Examples include:
-
-- an ERP or order-management system for customer orders and commercial commitments;
-- a warehouse management system for physical inventory and warehouse activity;
-- supplier systems for purchase-order commitments and inbound supply;
-- transportation systems for shipment status and delays.
-
-The Operations Intelligence Engine sits downstream from these systems.
+## Example: a shipment delay blocks an order
 
 ```mermaid
 flowchart LR
-    ERP[ERP / Order Management]
-    WMS[Warehouse Management System]
-    TMS[Transportation System]
-    SUP[Supplier Systems]
+    A["Before delay<br/>SO-2002: FULFILLABLE<br/>4 units inbound"]
+    B["IN-901 delayed<br/>Aug 9 → Aug 11"]
+    C["After delay<br/>SO-2002: BLOCKED<br/>Shortfall: 4"]
 
-    ERP --> OIE[Operations Intelligence Engine]
-    WMS --> OIE
-    TMS --> OIE
-    SUP --> OIE
-
-    OIE --> OPS[Operations Coordinator]
+    A --> B --> C
 ```
 
-The upstream systems provide facts. The engine derives operational impact and explanations.
+The order must ship by August 10. Before the delay, four inbound units are expected on August 9 and complete its projected allocation. When the shipment moves to August 11, those units become too late and the order becomes blocked.
 
-## First vertical slice
+The event-ingestion response identifies the transition and preserves its evidence. This abridged example highlights the material changes; the actual response includes complete before-and-after order and line assessments:
 
-The first slice follows a customer order that depends on an inbound supplier shipment.
+```json
+{
+  "eventId": "delay-IN-901",
+  "status": "APPLIED",
+  "impact": {
+    "changedOrders": [
+      {
+        "orderId": "SO-2002",
+        "type": "BECAME_BLOCKED",
+        "before": {
+          "status": "FULFILLABLE"
+        },
+        "after": {
+          "status": "BLOCKED"
+        },
+        "changedLines": [
+          {
+            "orderLineId": "SO-2002-L1",
+            "before": {
+              "projectedAllocation": 4,
+              "projectedShortfall": 0
+            },
+            "after": {
+              "projectedAllocation": 0,
+              "projectedShortfall": 4,
+              "blockingConditions": [
+                {
+                  "type": "INBOUND_AVAILABLE_TOO_LATE",
+                  "shipmentId": "IN-901"
+                }
+              ],
+              "triggeringChanges": [
+                {
+                  "type": "SHIPMENT_DELAYED",
+                  "shipmentId": "IN-901"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
-Initially:
+The complete scenario is implemented as an executable specification, focused tests, and an end-to-end HTTP test.
 
-- current warehouse inventory and expected inbound inventory are sufficient to fulfill the order by its required ship date;
-- the order is considered fulfillable.
+## How it works
 
-Then:
+```mermaid
+flowchart TD
+    A["POST normalized event"] --> B["Validate and map"]
+    B --> C["Calculate assessments before"]
+    C --> D["Apply to operational state"]
+    D --> E["Calculate assessments after"]
+    E --> F["Compare and return event impact"]
+    D --> G["GET current assessments"]
+```
 
-- the inbound shipment is delayed beyond the required ship date;
-- projected supply becomes insufficient;
-- the order becomes blocked;
-- the engine identifies the affected SKU, quantity shortfall, delayed shipment, and relevant dates.
+Events represent facts learned from upstream systems. The engine maintains a current operational projection, allocates matching supply across prioritized demand, and produces structured explanations for its conclusions.
 
-The scenario is implemented as an executable specification, automated test, and deterministic command-line demonstration.
+The upstream ERP, warehouse, supplier, and transportation systems remain authoritative for the facts they manage. This service derives cross-system operational impact.
 
-## Running the scenario
+## Implemented capabilities
 
-Install dependencies and run all documented fulfillment scenarios:
+- Ingest normalized `OrderPlaced`, `InventoryPositionReported`, `InboundShipmentConfirmed`, and `InboundShipmentDelayed` events.
+- Validate event structure and state-transition consistency.
+- Treat repeated event IDs as duplicates within the current process.
+- Maintain current orders, inventory positions, inbound shipments, and represented shipment changes.
+- Allocate on-hand and timely inbound supply without double-counting units across orders.
+- Prioritize demand deterministically by required ship time, placement time, order ID, and line ID.
+- Return order- and line-level fulfillment status, projected allocation, and shortfall.
+- Explain late inbound supply, supply consumed by higher-priority demand, and otherwise undetermined shortfalls.
+- Compare assessments before and after an event.
+- Classify orders as added, removed, newly blocked, newly fulfillable, or changed in material detail.
+- Return immediate event impact through the ingestion API.
+
+## HTTP API
+
+```http
+POST /v1/operational-events
+GET /v1/fulfillment-assessments
+```
+
+`POST /v1/operational-events` applies a normalized event and returns its immediate fulfillment impact. Duplicate events return `DUPLICATE` with no new impact.
+
+`GET /v1/fulfillment-assessments` returns the explainable current assessment for every open order.
+
+The HTTP behavior is currently exercised through Fastify integration tests using `app.inject()`; the repository does not yet expose a standalone deployed server.
+
+## Run and verify
+
+Requirements: Node.js 22 and npm.
 
 ```bash
 npm install
 npm run scenario
+npm run verify
 ```
 
-Run one scenario by passing its name:
+Run one executable scenario:
 
 ```bash
 npm run scenario -- shipment-delay-blocks-order
 ```
 
-The runner applies each business event in order, recalculates fulfillment after every event, and prints order status transitions with their supply contributions, blockers, and matching triggering changes. This exposes every intermediate state rather than skipping directly to a curated before-and-after result. The following is the shipment-delay scenario output:
+`npm run verify` checks formatting, runs the automated tests and executable scenarios, and typechecks the project. The same checks run in GitHub Actions.
 
-```text
-Scenario: shipment-delay-blocks-order
-An inbound shipment moves past an order deadline, changing the order from fulfillable to blocked.
+## Current business rules
 
-[1/4] InventoryPositionReported (event-inventory-1001)
-CHI / BEARING-440: 70 usable, 0 reserved, 0 unusable
-No orders to assess.
+| Rule                 | Current behavior                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| Warehouse scope      | Each order line uses one fulfillment warehouse; supply does not move between warehouses.         |
+| On-hand availability | `max(0, usableQuantity - reservedQuantity)`; unusable inventory does not contribute.             |
+| Inbound eligibility  | Confirmed inbound supply contributes only when available by the required ship time.              |
+| Demand priority      | Earlier required ship time, then earlier placement time; IDs provide deterministic tie-breaking. |
+| Supply use           | On-hand supply is allocated before timely inbound supply.                                        |
+| Order status         | An order is fulfillable only when every line has zero projected shortfall.                       |
+| Explanation          | Structured blocker quantities account for the shortfall without exceeding it.                    |
+| Projection boundary  | Projected allocation does not create an upstream reservation.                                    |
 
-[2/4] OrderPlaced (event-order-1001)
-SO-1001: 100 BEARING-440 units required from CHI by 2026-08-08T17:00:00-05:00
+## Current limitations
 
-SO-1001: initial assessment BLOCKED
-Required ship time: 2026-08-08T17:00:00-05:00
-  SO-1001-L1 / BEARING-440 / CHI
-    Required: 100
-    Projected allocation: 70
-      - 70 on hand at CHI
-    Shortfall: 30
-    Blocker: 30 units have no identified supply source
+- Accepted events and operational state exist only in memory and do not survive restart.
+- Duplicate detection is not durable across restarts.
+- Concurrent ingestion and multiple service instances are not yet coordinated.
+- Only the latest represented availability change is retained for each shipment.
+- Event-impact attribution describes the immediate before-and-after change in this sequential service; it is not yet persisted history.
+- Customer priority, transfers, split fulfillment, substitutions, cancellations, and recovery recommendations are outside the current scope.
 
-[3/4] InboundShipmentConfirmed (event-inbound-1001)
-IN-900: 30 BEARING-440 units expected at CHI on 2026-08-06T09:00:00-05:00
-
-SO-1001: BLOCKED -> FULFILLABLE
-Required ship time: 2026-08-08T17:00:00-05:00
-  SO-1001-L1 / BEARING-440 / CHI
-    Required: 100
-    Projected allocation: 100
-      - 70 on hand at CHI
-      - 30 from IN-900, expected 2026-08-06T09:00:00-05:00
-    Shortfall: 0
-
-[4/4] InboundShipmentDelayed (event-inbound-1001-delayed)
-IN-900: delayed from 2026-08-06T09:00:00-05:00 to 2026-08-11T09:00:00-05:00
-
-SO-1001: FULFILLABLE -> BLOCKED
-Required ship time: 2026-08-08T17:00:00-05:00
-  SO-1001-L1 / BEARING-440 / CHI
-    Required: 100
-    Projected allocation: 70
-      - 70 on hand at CHI
-    Shortfall: 30
-    Blocker: 30 units on IN-900 arrive at 2026-08-11T09:00:00-05:00, after the required ship time
-    Trigger: IN-900 delayed from 2026-08-06T09:00:00-05:00 to 2026-08-11T09:00:00-05:00
-```
-
-The HTTP interface accepts normalized events from simulated upstream systems and exposes the resulting current fulfillment assessments to clients.
-
-## HTTP API
-
-Create an application instance with `buildApp()` and submit normalized events through:
-
-```http
-POST /v1/operational-events
-```
-
-Query the resulting current assessment through:
-
-```http
-GET /v1/fulfillment-assessments
-```
-
-The ingestion and query routes operate against the same in-memory operational state.
-
-The HTTP boundary is covered by an end-to-end test that submits operational events and verifies the resulting explainable fulfillment assessment.
-
-## Current status
-
-The first vertical slice is complete as an in-memory HTTP service.
-
-The system currently:
-
-- accepts normalized operational events through `POST /v1/operational-events`;
-- validates request structure and maps accepted requests into domain events;
-- applies order, inventory-position, inbound-shipment, and shipment-delay events to shared operational state;
-- treats a previously processed event ID as a duplicate;
-- allocates on-hand and timely inbound supply by deterministic demand priority;
-- exposes current results through `GET /v1/fulfillment-assessments`;
-- reports order- and line-level fulfillment status, projected allocation, and shortfall;
-- explains late inbound supply, supply consumed by higher-priority demand, and undetermined shortfalls;
-- attributes overlapping blocker evidence without exceeding the projected shortfall;
-- preserves a shipment delay as a triggering change only when it moves inbound supply from timely to late for the assessed order;
-- runs all documented fulfillment scenarios from the same definitions used by the acceptance tests.
-
-The current service stores operational state only in memory. Accepted events and derived state do not survive process restart, and concurrent ingestion is not yet protected by durable transactional boundaries.
-
-The next capability will compare fulfillment assessments before and after an event so the engine can identify which customer commitments changed because of that event.
+The committed next milestone is durable operational state: persist accepted events in PostgreSQL, enforce durable event identity, and reconstruct the same operational projection through deterministic replay.
 
 ## Documentation
 
 - [`docs/domain-overview.md`](docs/domain-overview.md) — business context, users, terminology, and scope
 - [`docs/ecosystem.md`](docs/ecosystem.md) — upstream systems and the engine's place in the operational ecosystem
 - [`docs/product-journey.md`](docs/product-journey.md) — journey of one industrial product from supplier to customer
-- [`docs/vertical-slice-01.md`](docs/vertical-slice-01.md) — working specification for the first vertical slice
-- [`docs/scenarios/shipment-delay-blocks-order.md`](docs/scenarios/shipment-delay-blocks-order.md) — first concrete business scenario
-- [`docs/journal/01-unfulfillable-orders.md`](docs/journal/01-unfulfillable-orders.md) — engineering decisions, discoveries, AI usage, and implementation notes
+- [`docs/vertical-slice-01.md`](docs/vertical-slice-01.md) — first vertical-slice specification
+- [`docs/architecture/fulfillment-engine.md`](docs/architecture/fulfillment-engine.md) — fulfillment engine structure and allocation flow
+- [`docs/scenarios/`](docs/scenarios/) — documented executable business scenarios
+- [`docs/journal/01-unfulfillable-orders.md`](docs/journal/01-unfulfillable-orders.md) — engineering decisions, discoveries, and implementation notes
+- [`docs/roadmap.md`](docs/roadmap.md) — completed, committed, candidate, and deferred milestones
 
-## Engineering approach
-
-The project follows several constraints:
-
-- understand the operational domain before designing software;
-- model concrete business scenarios before general abstractions;
-- treat events as evidence about business reality, not as the product itself;
-- keep source-system facts separate from derived operational conclusions;
-- make business rules and assumptions explicit;
-- produce explanations that an operations employee can act on;
-- implement one complete vertical slice before expanding the domain;
-- defer infrastructure and architectural complexity until the problem requires it.
-
-## Technology direction
-
-The planned stack is:
+## Technology
 
 - TypeScript
 - Node.js
-- PostgreSQL
-- automated scenario and integration testing
-
-Architecture and infrastructure choices will be introduced incrementally as the first slice exposes concrete requirements.
+- Fastify
+- TypeBox
+- Vitest
+- GitHub Actions
+- PostgreSQL planned for the next milestone
