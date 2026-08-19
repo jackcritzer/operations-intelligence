@@ -5,7 +5,7 @@ import { compareFulfillmentAssessments } from "../../src/fulfillment/compare-ful
 import type {
   OrderFulfillmentAssessment,
   OrderLineFulfillmentAssessment,
-} from "../../src/fulfillment/fulfillment-result.js";
+} from "../../src/fulfillment/fulfillment-assessment.js";
 import { applyEvent } from "../../src/state/apply-event.js";
 import { createEmptyOperationalState } from "../../src/state/operational-state.js";
 import {

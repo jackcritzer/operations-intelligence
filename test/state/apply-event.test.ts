@@ -5,15 +5,15 @@ import type {
   InventoryPositionReportedEvent,
   InboundShipmentConfirmedEvent,
   InboundShipmentDelayedEvent,
-} from "../src/events/operational-event.js";
+} from "../../src/events/operational-event.js";
 
-import { applyEvent } from "../src/state/apply-event.js";
+import { applyEvent } from "../../src/state/apply-event.js";
 import {
   createEmptyOperationalState,
   inventoryPositionKey,
-} from "../src/state/operational-state.js";
-import { EventApplicationError } from "../src/application/errors/event-application-error.js";
-import type { OperationalEvent } from "../src/events/operational-event.js";
+} from "../../src/state/operational-state.js";
+import { EventApplicationError } from "../../src/state/errors/event-application-error.js";
+import type { OperationalEvent } from "../../src/events/operational-event.js";
 
 type EventOverrides<TEvent extends { payload: object }> = Omit<
   Partial<TEvent>,

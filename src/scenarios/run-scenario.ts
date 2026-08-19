@@ -2,7 +2,7 @@ import type { OperationalEvent } from "../events/operational-event.js";
 import {
   type OrderFulfillmentAssessment,
   type FulfillmentStatus,
-} from "../fulfillment/fulfillment-result.js";
+} from "../fulfillment/fulfillment-assessment.js";
 import { calculateFulfillment } from "../fulfillment/calculate-fulfillment.js";
 import { applyEvent } from "../state/apply-event.js";
 import { createEmptyOperationalState } from "../state/operational-state.js";

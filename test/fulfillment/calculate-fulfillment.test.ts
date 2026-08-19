@@ -6,7 +6,7 @@ import type {
   OrderPlacedEvent,
 } from "../../src/events/operational-event.js";
 import { calculateFulfillment } from "../../src/fulfillment/calculate-fulfillment.js";
-import type { OrderFulfillmentAssessment } from "../../src/fulfillment/fulfillment-result.js";
+import type { OrderFulfillmentAssessment } from "../../src/fulfillment/fulfillment-assessment.js";
 import { applyEvent } from "../../src/state/apply-event.js";
 import { createEmptyOperationalState } from "../../src/state/operational-state.js";
 

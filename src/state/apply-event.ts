@@ -7,7 +7,7 @@ import {
   type ShipmentAvailabilityChange,
   type CustomerOrder,
 } from "./operational-state.js";
-import { EventApplicationError } from "../application/errors/event-application-error.js";
+import { EventApplicationError } from "./errors/event-application-error.js";
 
 export type ApplyEventResult = { status: "APPLIED" } | { status: "DUPLICATE" };
 

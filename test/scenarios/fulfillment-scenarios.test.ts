@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { OrderFulfillmentAssessment } from "../../src/fulfillment/fulfillment-result.js";
+import type { OrderFulfillmentAssessment } from "../../src/fulfillment/fulfillment-assessment.js";
 import { fulfillmentScenarios } from "../../src/scenarios/index.js";
 import {
   runScenario,
