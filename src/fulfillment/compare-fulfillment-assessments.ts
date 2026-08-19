@@ -3,7 +3,7 @@ import type {
   OrderFulfillmentChange,
   OrderFulfillmentChangeType,
   OrderLineFulfillmentChange,
-} from "./fulfillment-assessment-change.js";
+} from "./fulfillment-assessment-comparison.js";
 import type {
   OrderFulfillmentAssessment,
   OrderLineFulfillmentAssessment,
