@@ -1,7 +1,7 @@
 import { type TypeBoxTypeProvider } from "@fastify/type-provider-typebox";
 import Fastify, { type FastifyInstance } from "fastify";
 
-import { EventApplicationError } from "../application/errors/event-application-error.js";
+import { EventApplicationError } from "../state/errors/event-application-error.js";
 import {
   createEmptyOperationalState,
   type OperationalState,

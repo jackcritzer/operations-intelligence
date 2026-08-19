@@ -4,7 +4,7 @@ import type {
   OrderFulfillmentAssessment,
   SupplyContribution,
   TriggeringChange,
-} from "../fulfillment/fulfillment-result.js";
+} from "../fulfillment/fulfillment-assessment.js";
 import { fulfillmentScenarios } from "./index.js";
 import { runScenario } from "./run-scenario.js";
 

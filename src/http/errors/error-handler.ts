@@ -1,4 +1,4 @@
-import { EventApplicationError } from "../../application/errors/event-application-error.js";
+import { EventApplicationError } from "../../state/errors/event-application-error.js";
 interface FastifyValidationError extends Error {
   code: string;
   validation: unknown;

@@ -9,7 +9,7 @@ import type {
   TriggeringChange,
   ShipmentDelayTrigger,
   OrderLineFulfillmentAssessment,
-} from "./fulfillment-result.js";
+} from "./fulfillment-assessment.js";
 
 interface DemandItem {
   orderId: string;

@@ -3,11 +3,11 @@ import type {
   OrderFulfillmentChange,
   OrderFulfillmentChangeType,
   OrderLineFulfillmentChange,
-} from "./fulfillment-assessment-change.js";
+} from "./fulfillment-assessment-comparison.js";
 import type {
   OrderFulfillmentAssessment,
   OrderLineFulfillmentAssessment,
-} from "./fulfillment-result.js";
+} from "./fulfillment-assessment.js";
 
 export function compareFulfillmentAssessments(
   before: OrderFulfillmentAssessment[],

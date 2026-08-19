@@ -1,7 +1,7 @@
 import type {
   OrderFulfillmentAssessment,
   OrderLineFulfillmentAssessment,
-} from "./fulfillment-result.js";
+} from "./fulfillment-assessment.js";
 
 export type OrderFulfillmentChangeType =
   | "ADDED"

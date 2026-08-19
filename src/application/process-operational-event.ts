@@ -1,7 +1,7 @@
 import type { OperationalEvent } from "../events/operational-event.js";
 import { calculateFulfillment } from "../fulfillment/calculate-fulfillment.js";
 import { compareFulfillmentAssessments } from "../fulfillment/compare-fulfillment-assessments.js";
-import type { FulfillmentAssessmentComparison } from "../fulfillment/fulfillment-assessment-change.js";
+import type { FulfillmentAssessmentComparison } from "../fulfillment/fulfillment-assessment-comparison.js";
 import { applyEvent } from "../state/apply-event.js";
 import type { OperationalState } from "../state/operational-state.js";
 
