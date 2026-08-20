@@ -9,11 +9,13 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit",
     "scenario": "tsx src/scenarios/cli.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run format:check && npm test && npm run scenario && npm run typecheck"
+    "verify": "npm run format:check && npm test && npm run test:integration && npm run scenario && npm run typecheck",
+    "ready": "npm run format && npm run verify"
   },
   "repository": {
     "type": "git",
@@ -30,6 +32,7 @@
   "homepage": "https://github.com/jackcritzer/operations-intelligence#readme",
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "@types/pg": "^8.23.1",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "prettier": "^3.9.6",
@@ -40,6 +43,7 @@
   "dependencies": {
     "@fastify/type-provider-typebox": "^6.1.0",
     "@sinclair/typebox": "^0.34.52",
-    "fastify": "^5.11.2"
+    "fastify": "^5.11.2",
+    "pg": "^8.23.0"
   }
 }
