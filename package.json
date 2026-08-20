@@ -9,11 +9,13 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "typecheck": "tsc --noEmit",
     "scenario": "tsx src/scenarios/cli.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run format:check && npm test && npm run scenario && npm run typecheck"
+    "verify": "npm run format:check && npm test && npm run test:integration && npm run scenario && npm run typecheck",
+    "ready": "npm run format && npm run verify"
   },
   "repository": {
     "type": "git",
