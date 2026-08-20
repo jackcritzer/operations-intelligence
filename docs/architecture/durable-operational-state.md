@@ -36,13 +36,13 @@ PostgreSQL stores an append-only log of accepted normalized operational events.
 
 Each accepted event record contains:
 
-| Field               | Purpose                                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `replay_sequence`   | Database-generated unique sequence defining deterministic replay order.                                             |
-| `event_id`          | Producer-assigned event identity used for durable idempotency.                                                      |
-| `event_fingerprint` | Hash of the stable client-supplied event content, excluding server-generated delivery metadata such as`receivedAt`. |
-| `event_data`        | Complete accepted normalized event stored as JSONB and used during replay.                                          |
-| `accepted_at`       | Database timestamp recording when the event was durably accepted.                                                   |
+| Field                 | Purpose                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------- |
+| `replay_sequence`   | Database-generated unique sequence defining deterministic replay order.                     |
+| `event_id`          | Producer-assigned event identity used for durable idempotency.                              |
+| `event_fingerprint` | Hash of the stable event content, excluding`eventId` and server-generated `receivedAt`. |
+| `event_data`        | Complete accepted normalized event stored as JSONB and used during replay.                  |
+| `accepted_at`       | Database timestamp recording when the event was durably accepted.                           |
 
 `event_id` has a unique constraint. The fingerprint is not unique.
 
