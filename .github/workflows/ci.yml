@@ -40,13 +40,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install PostgreSQL client
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes postgresql-client
-
       - name: Apply database migrations
-        run: psql "$TEST_DATABASE_URL" -f db/migrations/001_create_accepted_events.sql
+        run: |
+          docker run --rm --network host -i postgres:17-alpine \
+            psql "$TEST_DATABASE_URL" \
+            < db/migrations/001_create_accepted_events.sql
 
       - name: Verify project
         run: npm run verify
