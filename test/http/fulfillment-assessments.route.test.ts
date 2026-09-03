@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "../../src/http/build-app.js";
 import { createEmptyOperationalState } from "../../src/state/operational-state.js";
+import { createInMemoryAcceptedEventStore } from "../support/accepted-event-store.fake.js";
 
 describe("GET /v1/fulfillment-assessments", () => {
   let app: FastifyInstance | undefined;
@@ -14,6 +15,7 @@ describe("GET /v1/fulfillment-assessments", () => {
   it("returns explainable assessments from events ingested through HTTP", async () => {
     app = buildApp({
       state: createEmptyOperationalState(),
+      eventStore: createInMemoryAcceptedEventStore(),
     });
 
     const orderResponse = await app.inject({

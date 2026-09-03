@@ -14,6 +14,9 @@ import {
 import { type Clock } from "./mappers/operational-event.mapper.js";
 import { registerFulfillmentAssessmentsRoutes } from "./routes/fulfillment-assessments.route.js";
 import { registerOperationalEventRoutes } from "./routes/operational-events.route.js";
+import type { AcceptedEventStore } from "../application/process-operational-event.js";
+import { EventIdentityConflictError } from "../application/errors/event-identity-conflict-error.js";
+import { createOperationalEventProcessor } from "../application/operational-event-processor.js";
 
 export const systemClock: Clock = {
   now: () => new Date(),
@@ -21,14 +24,25 @@ export const systemClock: Clock = {
 export interface BuildAppOptions {
   state?: OperationalState;
   clock?: Clock;
+  eventStore: AcceptedEventStore;
 }
 
-export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
+export function buildApp(options: BuildAppOptions): FastifyInstance {
   const app = Fastify({
     logger: false,
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   app.setErrorHandler((error, request, reply) => {
+    if (error instanceof EventIdentityConflictError) {
+      return reply.code(409).send({
+        code: error.code,
+        message: error.message,
+        details: {
+          eventId: error.eventId,
+        },
+      });
+    }
+
     if (error instanceof EventApplicationError) {
       return reply.code(statusForEventApplicationError(error)).send({
         code: error.code,
@@ -73,8 +87,10 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
 
   const clock = options.clock ?? systemClock;
 
+  const processor = createOperationalEventProcessor(state, options.eventStore);
+
   registerOperationalEventRoutes(app, {
-    state,
+    processor,
     clock,
   });
 
