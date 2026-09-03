@@ -64,6 +64,23 @@ export function createEmptyOperationalState(): OperationalState {
   };
 }
 
+export function cloneOperationalState(
+  state: OperationalState,
+): OperationalState {
+  return structuredClone(state);
+}
+
+export function replaceOperationalState(
+  target: OperationalState,
+  replacement: OperationalState,
+): void {
+  target.orders = replacement.orders;
+  target.inventoryPositions = replacement.inventoryPositions;
+  target.inboundShipments = replacement.inboundShipments;
+  target.shipmentAvailabilityChanges = replacement.shipmentAvailabilityChanges;
+  target.processedEventIds = replacement.processedEventIds;
+}
+
 export function inventoryPositionKey(warehouseId: string, sku: string): string {
   return `${warehouseId}:${sku}`;
 }

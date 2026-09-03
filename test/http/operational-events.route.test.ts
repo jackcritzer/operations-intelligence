@@ -8,6 +8,7 @@ import {
   inventoryPositionKey,
 } from "../../src/state/operational-state.js";
 import type { Clock } from "../../src/http/mappers/operational-event.mapper.js";
+import { createInMemoryAcceptedEventStore } from "../support/accepted-event-store.fake.js";
 
 const fixedClock: Clock = {
   now: () => new Date("2026-08-03T17:00:01.123Z"),
@@ -21,7 +22,9 @@ describe("POST /v1/operational-events", () => {
   });
 
   it("rejects a structurally invalid event", async () => {
-    app = buildApp();
+    app = buildApp({
+      eventStore: createInMemoryAcceptedEventStore(),
+    });
 
     const response = await app.inject({
       method: "POST",
@@ -73,6 +76,7 @@ describe("POST /v1/operational-events", () => {
     app = buildApp({
       state,
       clock: fixedClock,
+      eventStore: createInMemoryAcceptedEventStore(),
     });
 
     const response = await app.inject({
@@ -112,6 +116,7 @@ describe("POST /v1/operational-events", () => {
     app = buildApp({
       state: createEmptyOperationalState(),
       clock: fixedClock,
+      eventStore: createInMemoryAcceptedEventStore(),
     });
 
     const response = await app.inject({
@@ -140,7 +145,9 @@ describe("POST /v1/operational-events", () => {
   });
 
   it("returns 400 for malformed JSON", async () => {
-    app = buildApp();
+    app = buildApp({
+      eventStore: createInMemoryAcceptedEventStore(),
+    });
 
     const response = await app.inject({
       method: "POST",
@@ -167,6 +174,7 @@ describe("POST /v1/operational-events", () => {
     app = buildApp({
       state,
       clock: fixedClock,
+      eventStore: createInMemoryAcceptedEventStore(),
     });
 
     const requests = [
@@ -293,6 +301,7 @@ describe("POST /v1/operational-events", () => {
     app = buildApp({
       state,
       clock: fixedClock,
+      eventStore: createInMemoryAcceptedEventStore(),
     });
 
     const payload = {
@@ -348,6 +357,7 @@ describe("POST /v1/operational-events", () => {
     app = buildApp({
       state,
       clock: fixedClock,
+      eventStore: createInMemoryAcceptedEventStore(),
     });
 
     const requests = [
@@ -495,6 +505,66 @@ describe("POST /v1/operational-events", () => {
           },
         ],
       },
+    });
+  });
+
+  it("returns 409 when an event ID is reused with different content", async () => {
+    const state = createEmptyOperationalState();
+
+    const app = buildApp({
+      state,
+      clock: fixedClock,
+      eventStore: createInMemoryAcceptedEventStore(),
+    });
+
+    const originalRequest = {
+      eventId: "inventory-reported-1",
+      eventType: "InventoryPositionReported",
+      occurredAt: "2026-08-01T10:00:00-05:00",
+      source: "WMS",
+      payload: {
+        warehouseId: "CHI",
+        sku: "BRG-440",
+        usableQuantity: 4,
+        reservedQuantity: 0,
+        unusableQuantity: 0,
+      },
+    };
+
+    const conflictingRequest = {
+      ...originalRequest,
+      payload: {
+        ...originalRequest.payload,
+        usableQuantity: 10,
+      },
+    };
+
+    const originalResponse = await app.inject({
+      method: "POST",
+      url: "/v1/operational-events",
+      payload: originalRequest,
+    });
+
+    const conflictResponse = await app.inject({
+      method: "POST",
+      url: "/v1/operational-events",
+      payload: conflictingRequest,
+    });
+
+    expect(originalResponse.statusCode).toBe(200);
+
+    expect(conflictResponse.statusCode).toBe(409);
+
+    expect(conflictResponse.json()).toEqual({
+      code: "EVENT_ID_CONFLICT",
+      message: `Event ID ${originalRequest.eventId} was reused with different content`,
+      details: {
+        eventId: originalRequest.eventId,
+      },
+    });
+
+    expect(state.inventoryPositions.get("CHI:BRG-440")).toMatchObject({
+      usableQuantity: 4,
     });
   });
 });

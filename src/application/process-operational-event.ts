@@ -3,7 +3,12 @@ import { calculateFulfillment } from "../fulfillment/calculate-fulfillment.js";
 import { compareFulfillmentAssessments } from "../fulfillment/compare-fulfillment-assessments.js";
 import type { FulfillmentAssessmentComparison } from "../fulfillment/fulfillment-assessment-comparison.js";
 import { applyEvent } from "../state/apply-event.js";
-import type { OperationalState } from "../state/operational-state.js";
+import {
+  cloneOperationalState,
+  replaceOperationalState,
+  type OperationalState,
+} from "../state/operational-state.js";
+import { EventIdentityConflictError } from "./errors/event-identity-conflict-error.js";
 
 export type ProcessOperationalEventResult =
   | {
@@ -19,25 +24,44 @@ export type ProcessOperationalEventResult =
       };
     };
 
-export function processOperationalEvent(
+export interface AcceptedEventStore {
+  insertOrGet(
+    event: OperationalEvent,
+    fingerprint: string,
+  ): Promise<
+    | {
+        status: "INSERTED";
+        event: {
+          eventFingerprint: string;
+        };
+      }
+    | {
+        status: "EXISTING";
+        event: {
+          eventFingerprint: string;
+        };
+      }
+  >;
+}
+
+export async function processOperationalEvent(
   state: OperationalState,
   event: OperationalEvent,
-): ProcessOperationalEventResult {
-  if (state.processedEventIds.has(event.eventId)) {
-    return {
-      eventId: event.eventId,
-      status: "DUPLICATE",
-      impact: {
-        changedOrders: [],
-      },
-    };
-  }
-
+  fingerprint: string,
+  eventStore: AcceptedEventStore,
+): Promise<ProcessOperationalEventResult> {
+  const stagedState = cloneOperationalState(state);
   const before = calculateFulfillment(state);
 
-  const applicationResult = applyEvent(state, event);
+  const applicationResult = applyEvent(stagedState, event);
 
-  if (applicationResult.status === "DUPLICATE") {
+  const persistenceResult = await eventStore.insertOrGet(event, fingerprint);
+
+  if (persistenceResult.status === "EXISTING") {
+    if (persistenceResult.event.eventFingerprint !== fingerprint) {
+      throw new EventIdentityConflictError(event.eventId);
+    }
+
     return {
       eventId: event.eventId,
       status: "DUPLICATE",
@@ -47,11 +71,20 @@ export function processOperationalEvent(
     };
   }
 
-  const after = calculateFulfillment(state);
+  if (applicationResult.status === "DUPLICATE") {
+    throw new Error(
+      `Event ${event.eventId} exists in operational state but not in durable history`,
+    );
+  }
+
+  const after = calculateFulfillment(stagedState);
+  const impact = compareFulfillmentAssessments(before, after);
+
+  replaceOperationalState(state, stagedState);
 
   return {
     eventId: event.eventId,
     status: "APPLIED",
-    impact: compareFulfillmentAssessments(before, after),
+    impact,
   };
 }

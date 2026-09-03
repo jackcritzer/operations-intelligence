@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 
-import { processOperationalEvent } from "../../application/process-operational-event.js";
+import {
+  processOperationalEvent,
+  type AcceptedEventStore,
+} from "../../application/process-operational-event.js";
+import { createEventFingerprint } from "../../events/create-event-fingerprint.js";
 import type { OperationalState } from "../../state/operational-state.js";
 import {
   mapOperationalEventRequest,
@@ -14,9 +18,10 @@ import {
   OperationalEventResponseSchema,
   type OperationalEventResponse,
 } from "../schemas/operational-event-response.schema.js";
+import type { OperationalEventProcessor } from "../../application/operational-event-processor.js";
 
 export interface OperationalEventRouteDependencies {
-  state: OperationalState;
+  processor: OperationalEventProcessor;
   clock: Clock;
 }
 
@@ -43,10 +48,9 @@ export function registerOperationalEventRoutes(
         dependencies.clock,
       );
 
-      const result: OperationalEventResponse = processOperationalEvent(
-        dependencies.state,
-        event,
-      );
+      const fingerprint = createEventFingerprint(event);
+      const result: OperationalEventResponse =
+        await dependencies.processor.process(event, fingerprint);
 
       return reply.code(200).send(result);
     },
