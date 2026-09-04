@@ -15,7 +15,12 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "npm run format:check && npm test && npm run test:integration && npm run scenario && npm run typecheck",
-    "ready": "npm run format && npm run verify"
+    "ready": "npm run format && npm run verify",
+    "dev": "tsx watch src/server.ts",
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js"
   },
   "repository": {
     "type": "git",
