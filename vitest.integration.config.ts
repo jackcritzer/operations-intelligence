@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 const localDatabaseUrl =
-  "postgresql://operations:operations@localhost:5432/operations_intelligence";
+  "postgresql://operations:operations@localhost:5433/operations_intelligence_test";
 
 export default defineConfig({
   test: {

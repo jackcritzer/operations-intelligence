@@ -9,9 +9,28 @@ services:
       - "5432:5432"
     volumes:
       - operations-intelligence-postgres:/var/lib/postgresql/data
-      - ./db/migrations:/migrations:ro
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U operations -d operations_intelligence"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+  postgres-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: operations_intelligence_test
+      POSTGRES_USER: operations
+      POSTGRES_PASSWORD: operations
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U operations -d operations_intelligence_test",
+        ]
       interval: 2s
       timeout: 5s
       retries: 10
