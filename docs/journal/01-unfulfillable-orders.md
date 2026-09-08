@@ -149,7 +149,7 @@ Showing only allocation totals hid the scenario’s causal story. The output now
 
 Operational state retains only the latest availability change for each shipment. If a shipment first crosses an order deadline and is later delayed again, the original crossing is no longer represented in current state.
 
-The current attribution is therefore sound for the latest represented change, not for complete shipment history. Durable event persistence and replay should preserve the history needed to explain multiple successive delays without expanding this slice into event-history infrastructure prematurely.
+The current attribution is therefore sound for the latest represented change, not for complete shipment history. The accepted-event log now preserves the underlying delay events durably, but the current fulfillment projection does not use that complete history when constructing explanations. Historical attribution remains a separate capability rather than being implied by event persistence alone.
 
 ## Testing and validation
 
@@ -230,36 +230,58 @@ This work also made idempotency part of the product result rather than only an i
 
 ## Interview story
 
-I started with a business question rather than an API or database schema. I modeled orders, inventory, inbound supply, and delays as facts from separate operational systems. The first challenge was preventing double allocation across competing demand while producing explanations that did not claim more than the available evidence supported.
+I started with a business question rather than an API or database schema: which customer orders cannot be fulfilled by their required ship time, and why?
 
-I implemented deterministic demand priority, a calculation-local supply pool, structured supply contributions, blocking conditions, and triggering changes. When blocking evidence overlaps, the engine attributes the shortfall according to explanatory strength and reports a shipment delay as a trigger only when it moved supply across the assessed order's deadline.
+I modeled orders, inventory, inbound supply, and delays as facts from separate operational systems. The first challenge was preventing double allocation across competing demand while producing explanations that did not claim more than the available evidence supported.
 
-I then extended the engine from explaining current state to explaining immediate event impact. Event processing calculates assessments before and after an accepted event, compares the complete results, and returns only materially changed orders through the HTTP boundary. The end-to-end scenario demonstrates a shipment delay moving an order from `FULFILLABLE` to `BLOCKED`, including the lost inbound allocation, resulting shortfall, blocker, and triggering change.
+I implemented deterministic demand priority, a calculation-local supply pool, structured supply contributions, blocking conditions, and triggering changes. When evidence overlaps, the engine attributes the shortfall according to explanatory strength and reports a shipment delay as a trigger only when it moved supply across the assessed order’s deadline.
 
-The current result is an in-memory HTTP service, not yet a durable production backend. Its business behavior and explanation contracts are explicit and tested across domain, application, and HTTP boundaries. The next milestone will persist accepted events and reconstruct operational state through deterministic replay.
+I then extended the engine from explaining current state to explaining immediate event impact. Event processing calculates assessments before and after an accepted event, compares the complete results, and returns only materially changed orders through the HTTP boundary.
+
+The next system-design problem was durability. Directly mutating in-memory state before writing to PostgreSQL could leave the running process ahead of durable history if persistence failed. Overlapping requests could also clone the same state and overwrite each other’s changes.
+
+I addressed those boundaries by:
+
+- storing accepted normalized events in PostgreSQL;
+- enforcing durable event-ID uniqueness;
+- comparing stable content fingerprints for duplicate and conflict handling;
+- applying each event to cloned staged state;
+- publishing staged state only after durable acceptance;
+- serializing the complete state-dependent operation within one process;
+- replaying accepted events in database order before opening the HTTP port;
+- failing startup when persisted history cannot be reconstructed safely.
+
+The result is a durable single-instance backend with explicit consistency boundaries. It survives process restarts, reconstructs its operational projection deterministically, preserves duplicate recognition, and refuses conflicting event identity reuse.
+
+I deliberately did not claim multi-instance correctness. Each process would maintain its own in-memory projection and serial queue, so multiple active instances require an additional coordination design.
 
 ## Follow-up work
 
-### Committed next
+### Portfolio checkpoint
 
-1. Design the accepted-event log as the durable system of record.
-2. Persist normalized events with durable identity and content-conflict detection.
-3. Rebuild operational state through deterministic replay after restart.
-4. Define the transaction and failure boundary between event persistence and state application.
-5. Add database-backed integration tests and local PostgreSQL infrastructure.
+The durable single-instance backend is a complete portfolio checkpoint after its documentation and repository audit are finished.
 
-### Candidate later milestones
+The checkpoint demonstrates:
 
-1. Define correctness under concurrent requests and multiple service instances.
-2. Add event, order, shipment, and impact-history queries where they answer concrete operational questions.
-3. Build a bounded impact explorer for event timelines and before-and-after fulfillment evidence.
-4. Add structured observability, readiness, graceful shutdown, deployment, backup, and recovery behavior.
+- business-centered domain modeling;
+- deterministic shared-supply allocation;
+- structured explainability;
+- immediate before-and-after event impact;
+- HTTP request validation and error mapping;
+- PostgreSQL event persistence;
+- durable idempotency and conflict detection;
+- staged state publication;
+- asynchronous concurrency control;
+- deterministic startup replay;
+- runtime configuration and graceful shutdown;
+- unit, integration, concurrency, HTTP, scenario, and restart verification.
 
-Kafka, Redis, microservices, Kubernetes, and other infrastructure remain deferred until a concrete scaling, coordination, or deployment requirement justifies them.
+### Candidate next milestones
 
-Future operational questions include:
+1. Add historical event and impact queries when a concrete audit question defines the required model.
+2. Build a bounded impact explorer for event timelines and before-and-after fulfillment evidence.
+3. Add health, readiness, structured logging, metrics, and deployable runtime infrastructure.
+4. Design database-backed coordination if multiple active service instances become a real requirement.
+5. Introduce snapshots or projection versioning if replay scale or rule evolution requires them.
 
-- Which orders became newly at risk, and what changed?
-- Which inbound disruption affects the most customer demand?
-- Which blocked orders have no identified recovery supply?
-- Which feasible intervention could restore fulfillment?
+Kafka, Redis, microservices, Kubernetes, persisted current assessments, and generalized caching remain deferred until a concrete requirement justifies their consistency and operational costs.

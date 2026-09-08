@@ -68,36 +68,43 @@ Complete before-and-after assessments are preserved in the impact result. Duplic
 
 The end-to-end HTTP scenario proves that delaying inbound supply beyond an order deadline changes the affected order from `FULFILLABLE` to `BLOCKED` and returns its resulting allocation, shortfall, blocker, and triggering change.
 
-## Committed next: Durable operational state
+## Completed: Durable operational state
 
 ### Operational question
 
 > Can the service preserve and reconstruct its operational understanding across restarts?
 
-### Intended guarantees
+### Implemented capability
 
-The milestone should provide:
+The service now:
 
-- PostgreSQL storage for accepted normalized events;
-- durable event-ID uniqueness;
-- recognition of the same event ID and content as a duplicate;
-- rejection of an event ID reused with different content;
-- deterministic replay into operational state;
-- restart recovery that produces the same current fulfillment assessments;
-- an explicit transaction and failure boundary for event acceptance;
-- database-backed integration tests and local development infrastructure.
+- stores accepted normalized events in PostgreSQL as its durable source of truth;
+- assigns each accepted event a database-generated replay sequence;
+- fingerprints normalized event content for durable identity comparison;
+- recognizes the same event ID and content as a duplicate;
+- rejects an event ID reused with different content;
+- rebuilds operational state deterministically from accepted events during startup;
+- finishes replay before opening the HTTP port;
+- stages state changes before persistence;
+- publishes staged state only after successful database acceptance;
+- leaves live state unchanged when validation or persistence fails;
+- serializes the complete event-processing operation within one Node.js process;
+- closes HTTP and database resources during shutdown or failed startup;
+- verifies repository, replay, HTTP, concurrency, runtime, and restart behavior through automated and manual tests.
 
-### Design questions to resolve before implementation
+### Acceptance boundary
 
-- Is the accepted event log the durable source of truth?
-- Which data, if any, should be persisted in addition to accepted events?
-- What database-assigned sequence determines replay order?
-- How is normalized event content fingerprinted?
-- How can an event be validated and staged without partially mutating live state?
-- What happens if database persistence or in-memory application fails?
-- At what point is the service ready to answer queries during startup replay?
+For one running service instance, an event is processed in this order:
 
-Assessments and event-impact results remain derived unless a later historical requirement justifies persisting them.
+1. wait for earlier event processing to finish;
+2. clone the current operational state;
+3. calculate fulfillment assessments before the event;
+4. validate and apply the event to staged state;
+5. insert or classify the event in PostgreSQL;
+6. for a newly accepted event, calculate the resulting assessments and impact;
+7. publish staged state.
+
+The database event log survives process restarts. The in-memory operational projection and current fulfillment assessments remain derived data and are reconstructed through replay.
 
 ### Completion demonstration
 
@@ -111,25 +118,34 @@ start service
 → resend an accepted event
 → receive DUPLICATE
 → reuse its ID with different content
-→ receive a conflict
+→ receive HTTP 409 Conflict
 ```
 
-## Candidate: Concurrency correctness
+### Deliberately deferred boundaries
+
+- Multiple service instances are not coordinated.
+- Event-impact and assessment history are not persisted.
+- Database migrations are not yet tracked by a dedicated migration tool.
+- Deployment, readiness, metrics, backup, and recovery procedures remain future operational work.
+
+## Candidate: Multi-instance concurrency correctness
 
 ### Operational question
 
-> Can the service remain correct when requests overlap or more than one instance processes events?
+> Can the service remain correct when more than one service instance processes events concurrently?
+
+The current serial queue prevents lost updates between overlapping requests within one Node.js process. It does not coordinate independently running processes, because each process maintains its own in-memory projection and queue.
 
 Potential work includes:
 
-- simultaneous duplicate delivery;
-- concurrent changes to the same shipment or inventory position;
-- query consistency during event acceptance;
-- transaction isolation and database-backed coordination;
-- projection versioning or synchronization across service instances;
-- controlled behavior during instance restart.
+- database-backed coordination between instances;
+- projection versioning or optimistic concurrency checks;
+- synchronization after another instance accepts an event;
+- transaction-isolation requirements;
+- query consistency while remote events are being incorporated;
+- controlled behavior while an instance restarts or falls behind.
 
-This milestone will be designed after durable single-instance behavior reveals the actual consistency boundaries.
+This capability should be introduced only when running multiple instances becomes a concrete requirement. The current single-instance guarantee is explicit and tested.
 
 ## Candidate: Audit and impact history
 
