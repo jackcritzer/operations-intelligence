@@ -81,23 +81,39 @@ The complete scenario is implemented as an executable specification, focused tes
 
 ```mermaid
 flowchart TD
-    A["POST normalized event"] --> B["Validate and map"]
-    B --> C["Calculate assessments before"]
-    C --> D["Apply to operational state"]
-    D --> E["Calculate assessments after"]
-    E --> F["Compare and return event impact"]
-    D --> G["GET current assessments"]
+    A["POST normalized event"] --> B["Validate and fingerprint"]
+    B --> C["Serialize event processing"]
+    C --> D["Clone current state"]
+    D --> E["Calculate assessments before"]
+    E --> F["Apply event to staged state"]
+    F --> G["Persist accepted event"]
+    G --> H["Calculate assessments after"]
+    H --> I["Publish staged state"]
+    I --> J["Return event impact"]
+
+    K["PostgreSQL accepted-event log"] --> L["Replay accepted events at startup"]
+    L --> M["Reconstructed operational state"]
+    M --> C
+    M --> N["GET current assessments"]
 ```
 
-Events represent facts learned from upstream systems. The engine maintains a current operational projection, allocates matching supply across prioritized demand, and produces structured explanations for its conclusions.
+The accepted-event log in PostgreSQL is the durable source of truth. At startup, the service loads accepted events in database-assigned replay order and applies them to an empty operational state before opening its HTTP port.
 
-The upstream ERP, warehouse, supplier, and transportation systems remain authoritative for the facts they manage. This service derives cross-system operational impact.
+For a new event, the service clones the current state and applies the event to that staged copy. The staged state replaces the live state only after the event has been accepted by PostgreSQL. This prevents validation or persistence failures from leaving memory ahead of durable history.
+
+Event processing is serialized within one Node.js process so overlapping requests cannot publish stale staged states over newer ones. Coordination across multiple service instances remains outside the current guarantee.
 
 ## Implemented capabilities
 
 - Ingest normalized `OrderPlaced`, `InventoryPositionReported`, `InboundShipmentConfirmed`, and `InboundShipmentDelayed` events.
 - Validate event structure and state-transition consistency.
-- Treat repeated event IDs as duplicates within the current process.
+- Persist accepted normalized events in PostgreSQL.
+- Assign accepted events a stable database replay sequence.
+- Reconstruct operational state deterministically when the service starts.
+- Recognize the same event ID and normalized content as a durable duplicate.
+- Reject an event ID reused with different content.
+- Stage state changes before persistence and publish them only after successful event acceptance.
+- Serialize event processing within one service instance to prevent overlapping requests from losing state updates.
 - Maintain current orders, inventory positions, inbound shipments, and represented shipment changes.
 - Allocate on-hand and timely inbound supply without double-counting units across orders.
 - Prioritize demand deterministically by required ship time, placement time, order ID, and line ID.
@@ -106,6 +122,7 @@ The upstream ERP, warehouse, supplier, and transportation systems remain authori
 - Compare assessments before and after an event.
 - Classify orders as added, removed, newly blocked, newly fulfillable, or changed in material detail.
 - Return immediate event impact through the ingestion API.
+- Run as a standalone Fastify server with validated runtime configuration and graceful shutdown.
 
 ## HTTP API
 
@@ -114,29 +131,56 @@ POST /v1/operational-events
 GET /v1/fulfillment-assessments
 ```
 
-`POST /v1/operational-events` applies a normalized event and returns its immediate fulfillment impact. Duplicate events return `DUPLICATE` with no new impact.
+`POST /v1/operational-events` validates, fingerprints, stages, and durably accepts a normalized event before publishing its resulting operational state.
+
+A newly accepted event returns `APPLIED` with its immediate fulfillment impact. Resending the same event ID with identical normalized content returns `DUPLICATE` with no new impact. Reusing an accepted event ID with different content returns HTTP `409 Conflict`.
 
 `GET /v1/fulfillment-assessments` returns the explainable current assessment for every open order.
 
-The HTTP behavior is currently exercised through Fastify integration tests using `app.inject()`; the repository does not yet expose a standalone deployed server.
+The API can be exercised through Fastify tests using `app.inject()` or through the standalone server started with `npm run dev` or `npm start`.
 
-## Run and verify
+## Run locally
 
-Requirements: Node.js 22 and npm.
+Requirements:
+
+- Node.js 22
+- npm
+- Docker with Docker Compose
+
+Install dependencies and start PostgreSQL:
 
 ```bash
 npm install
-npm run scenario
+npm run db:up
+```
+
+Start the development server:
+
+```bash
+DATABASE_URL=postgresql://operations:operations@localhost:5432/operations_intelligence npm run dev
+```
+
+The service listens on port `3000` by default. Supply `HOST` or `PORT` to override those defaults.
+
+Run the complete verification suite:
+
+```bash
 npm run verify
 ```
 
-Run one executable scenario:
+This checks formatting, unit tests, PostgreSQL integration tests, executable scenarios, TypeScript types, and the production build.
+
+Run one executable business scenario independently:
 
 ```bash
 npm run scenario -- shipment-delay-blocks-order
 ```
 
-`npm run verify` checks formatting, runs the automated tests and executable scenarios, and typechecks the project. The same checks run in GitHub Actions.
+Stop the local database services:
+
+```bash
+npm run db:down
+```
 
 ## Current business rules
 
@@ -153,14 +197,15 @@ npm run scenario -- shipment-delay-blocks-order
 
 ## Current limitations
 
-- Accepted events and operational state exist only in memory and do not survive restart.
-- Duplicate detection is not durable across restarts.
-- Concurrent ingestion and multiple service instances are not yet coordinated.
-- Only the latest represented availability change is retained for each shipment.
-- Event-impact attribution describes the immediate before-and-after change in this sequential service; it is not yet persisted history.
+- Event processing is serialized only within one Node.js process; multiple service instances are not coordinated.
+- The live operational projection is held in memory and reconstructed from the durable accepted-event log after restart.
+- Only the latest represented availability change is retained in current state for each shipment.
+- Event-impact results and historical assessments are not persisted.
+- Database initialization currently relies on PostgreSQL container initialization scripts rather than a version-tracking migration tool.
+- Health, readiness, metrics, structured operational logging, deployment automation, backup, and recovery procedures are not yet implemented.
 - Customer priority, transfers, split fulfillment, substitutions, cancellations, and recovery recommendations are outside the current scope.
 
-The committed next milestone is durable operational state: persist accepted events in PostgreSQL, enforce durable event identity, and reconstruct the same operational projection through deterministic replay.
+The durable operational-state milestone is complete. The next major capability will be selected after reviewing concurrency, audit-history, visualization, and operable-deployment needs.
 
 ## Documentation
 
@@ -169,6 +214,7 @@ The committed next milestone is durable operational state: persist accepted even
 - [`docs/product-journey.md`](docs/product-journey.md) — journey of one industrial product from supplier to customer
 - [`docs/vertical-slice-01.md`](docs/vertical-slice-01.md) — first vertical-slice specification
 - [`docs/architecture/fulfillment-engine.md`](docs/architecture/fulfillment-engine.md) — fulfillment engine structure and allocation flow
+- [`docs/architecture/durable-operational-state.md`](docs/architecture/durable-operational-state.md) — event persistence, staged state publication, replay, failure handling, and concurrency boundaries
 - [`docs/scenarios/`](docs/scenarios/) — documented executable business scenarios
 - [`docs/journal/01-unfulfillable-orders.md`](docs/journal/01-unfulfillable-orders.md) — engineering decisions, discoveries, and implementation notes
 - [`docs/roadmap.md`](docs/roadmap.md) — completed, committed, candidate, and deferred milestones
@@ -179,6 +225,7 @@ The committed next milestone is durable operational state: persist accepted even
 - Node.js
 - Fastify
 - TypeBox
+- PostgreSQL
 - Vitest
+- Docker Compose
 - GitHub Actions
-- PostgreSQL planned for the next milestone
