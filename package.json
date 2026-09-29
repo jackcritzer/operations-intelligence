@@ -19,7 +19,8 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "explorer:data": "tsx src/demo/generate-impact-explorer-data.ts"
   },
   "repository": {
     "type": "git",
