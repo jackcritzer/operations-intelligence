@@ -13,7 +13,7 @@
     "scenario": "tsx src/scenarios/cli.ts",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "verify": "npm run format:check && npm test && npm run test:integration && npm run scenario && npm run typecheck && npm run build",
+    "verify": "npm run format:check && npm test && npm run test:integration && npm run scenario && npm run typecheck && npm run build && npm run explorer:check",
     "ready": "npm run format && npm run verify",
     "dev": "tsx watch src/server.ts",
     "db:up": "docker compose up -d --wait",
@@ -23,7 +23,8 @@
     "explorer:data": "tsx src/demo/generate-impact-explorer-data.ts",
     "explorer:dev": "npm run explorer:data && vite --config explorer/vite.config.ts",
     "explorer:typecheck": "tsc --noEmit -p explorer/tsconfig.json",
-    "explorer:build": "npm run explorer:data && npm run explorer:typecheck && vite build --config explorer/vite.config.ts"
+    "explorer:build": "npm run explorer:data && npm run explorer:typecheck && vite build --config explorer/vite.config.ts",
+    "explorer:check": "npm run explorer:build && git diff --exit-code -- explorer/public/data/shipment-delay-blocks-order.json"
   },
   "repository": {
     "type": "git",
