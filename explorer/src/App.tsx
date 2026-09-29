@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import type { ImpactExplorerView } from "../../src/demo/impact-explorer-view.js";
 import { loadImpactExplorerView } from "./load-impact-explorer-view.js";
+import { ImpactDetails } from "./ImpactDetails.js";
 
 export function App() {
   const [view, setView] = useState<ImpactExplorerView | null>(null);
@@ -57,7 +58,7 @@ function Explorer({ view }: ExplorerProps) {
 
   if (selectedStep === undefined) {
     return (
-      <main>
+      <main className="explorer">
         <h1>Impact Explorer</h1>
         <p role="alert">The selected scenario step does not exist.</p>
       </main>
@@ -65,66 +66,65 @@ function Explorer({ view }: ExplorerProps) {
   }
 
   return (
-    <main>
-      <header>
-        <p>Operations Intelligence Engine</p>
+    <main className="explorer">
+      <header className="hero">
+        <p className="eyebrow">Operations Intelligence Engine</p>
         <h1>Impact Explorer</h1>
-        <p>{view.scenario.description}</p>
+        <p className="hero-description">{view.scenario.description}</p>
       </header>
+      <div className="explorer-grid">
+        <section
+          aria-labelledby="event-timeline-heading"
+          className="timeline-panel"
+        >
+          <h2 id="event-timeline-heading">Operational events</h2>
 
-      <section aria-labelledby="event-timeline-heading">
-        <h2 id="event-timeline-heading">Operational events</h2>
-
-        <ol>
-          {view.steps.map((step) => (
-            <li key={step.event.eventId}>
-              <button
-                type="button"
-                aria-pressed={step.index === selectedStepIndex}
-                onClick={() => setSelectedStepIndex(step.index)}
-              >
-                {step.title}
-              </button>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section aria-labelledby="selected-event-heading">
-        <h2 id="selected-event-heading">{selectedStep.title}</h2>
-
-        <dl>
-          <dt>Event type</dt>
-          <dd>{selectedStep.event.eventType}</dd>
-
-          <dt>Occurred at</dt>
-          <dd>{selectedStep.event.occurredAt}</dd>
-
-          <dt>Source</dt>
-          <dd>{selectedStep.event.source}</dd>
-        </dl>
-
-        <h3>Affected orders</h3>
-
-        {selectedStep.impact.changedOrders.length === 0 ? (
-          <p>No order impact at this step.</p>
-        ) : (
-          <ul>
-            {selectedStep.impact.changedOrders.map((order) => (
-              <li key={order.orderId}>
-                <strong>{order.orderId}</strong>:{" "}
-                {order.before?.status ?? "Not present"} →{" "}
-                {order.after?.status ?? "Not present"}
+          <ol className="timeline">
+            {view.steps.map((step) => (
+              <li key={step.event.eventId}>
+                <button
+                  type="button"
+                  className={
+                    step.index === selectedStepIndex
+                      ? "timeline-button timeline-button--selected"
+                      : "timeline-button"
+                  }
+                  aria-pressed={step.index === selectedStepIndex}
+                  onClick={() => setSelectedStepIndex(step.index)}
+                >
+                  <span className="timeline-step">Step {step.index + 1}</span>
+                  <span>{step.title}</span>
+                </button>
               </li>
             ))}
-          </ul>
-        )}
+          </ol>
+        </section>
 
-        <details>
-          <summary>View event data</summary>
-          <pre>{JSON.stringify(selectedStep.event, null, 2)}</pre>
-        </details>
-      </section>
+        <section
+          className="event-panel"
+          aria-labelledby="selected-event-heading"
+        >
+          <h2 id="selected-event-heading">{selectedStep.title}</h2>
+
+          <dl className="event-metadata">
+            <dt>Event type</dt>
+            <dd>{selectedStep.event.eventType}</dd>
+
+            <dt>Occurred at</dt>
+            <dd>{selectedStep.event.occurredAt}</dd>
+
+            <dt>Source</dt>
+            <dd>{selectedStep.event.source}</dd>
+          </dl>
+
+          <ImpactDetails impact={selectedStep.impact} />
+
+          <details className="raw-event">
+            <summary>View event data</summary>
+            <pre>{JSON.stringify(selectedStep.event, null, 2)}</pre>
+          </details>
+        </section>
+      </div>
     </main>
   );
 }
