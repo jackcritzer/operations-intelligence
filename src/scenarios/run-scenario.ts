@@ -6,6 +6,8 @@ import {
 import { calculateFulfillment } from "../fulfillment/calculate-fulfillment.js";
 import { applyEvent } from "../state/apply-event.js";
 import { createEmptyOperationalState } from "../state/operational-state.js";
+import type { FulfillmentAssessmentComparison } from "../fulfillment/fulfillment-assessment-comparison.js";
+import { compareFulfillmentAssessments } from "../fulfillment/compare-fulfillment-assessments.js";
 
 export interface ScenarioDefinition {
   name: string;
@@ -47,6 +49,7 @@ export interface ScenarioStep {
   event: OperationalEvent;
   assessments: OrderFulfillmentAssessment[];
   statusChanges: FulfillmentStatusChange[];
+  impact: FulfillmentAssessmentComparison;
 }
 
 export interface ScenarioRun {
@@ -63,6 +66,8 @@ export function runScenario(scenario: ScenarioDefinition): ScenarioRun {
   const steps: ScenarioStep[] = [];
 
   for (const event of scenario.events) {
+    const before = calculateFulfillment(state);
+
     applyEvent(state, event);
 
     const assessments = calculateFulfillment(state);
@@ -82,11 +87,13 @@ export function runScenario(scenario: ScenarioDefinition): ScenarioRun {
       ];
     });
 
+    const impact = compareFulfillmentAssessments(before, assessments);
+
     for (const assessment of assessments) {
       previousStatuses.set(assessment.orderId, assessment.status);
     }
 
-    steps.push({ event, assessments, statusChanges });
+    steps.push({ event, assessments, statusChanges, impact });
   }
 
   return { scenario, steps };

@@ -62,5 +62,49 @@ describe("runScenario", () => {
         },
       ],
     });
+
+    const finalImpact = result.steps.at(-1)?.impact;
+
+    expect(finalImpact).toMatchObject({
+      changedOrders: [
+        {
+          orderId: "SO-1001",
+          type: "BECAME_BLOCKED",
+          before: {
+            status: "FULFILLABLE",
+            lines: [
+              {
+                orderLineId: "SO-1001-L1",
+                projectedAllocation: 100,
+                projectedShortfall: 0,
+              },
+            ],
+          },
+          after: {
+            status: "BLOCKED",
+            lines: [
+              {
+                orderLineId: "SO-1001-L1",
+                projectedAllocation: 70,
+                projectedShortfall: 30,
+              },
+            ],
+          },
+          changedLines: [
+            {
+              orderLineId: "SO-1001-L1",
+              before: {
+                projectedAllocation: 100,
+                projectedShortfall: 0,
+              },
+              after: {
+                projectedAllocation: 70,
+                projectedShortfall: 30,
+              },
+            },
+          ],
+        },
+      ],
+    });
   });
 });

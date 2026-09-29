@@ -1,0 +1,567 @@
+{
+  "scenario": {
+    "name": "shipment-delay-blocks-order",
+    "description": "An inbound shipment moves past an order deadline, changing the order from fulfillable to blocked."
+  },
+  "defaultStepIndex": 3,
+  "steps": [
+    {
+      "index": 0,
+      "title": "Inventory position reported",
+      "event": {
+        "eventId": "event-inventory-1001",
+        "eventType": "InventoryPositionReported",
+        "occurredAt": "2026-08-01T08:00:00-05:00",
+        "receivedAt": "2026-08-01T08:00:01-05:00",
+        "source": "WMS",
+        "payload": {
+          "warehouseId": "CHI",
+          "sku": "BEARING-440",
+          "usableQuantity": 70,
+          "reservedQuantity": 0,
+          "unusableQuantity": 0
+        }
+      },
+      "assessments": [],
+      "impact": {
+        "changedOrders": []
+      }
+    },
+    {
+      "index": 1,
+      "title": "Customer order placed",
+      "event": {
+        "eventId": "event-order-1001",
+        "eventType": "OrderPlaced",
+        "occurredAt": "2026-08-01T09:00:00-05:00",
+        "receivedAt": "2026-08-01T09:00:01-05:00",
+        "source": "ERP",
+        "payload": {
+          "orderId": "SO-1001",
+          "placedAt": "2026-08-01T09:00:00-05:00",
+          "requiredShipAt": "2026-08-08T17:00:00-05:00",
+          "lines": [
+            {
+              "orderLineId": "SO-1001-L1",
+              "sku": "BEARING-440",
+              "quantity": 100,
+              "fulfillmentWarehouseId": "CHI"
+            }
+          ]
+        }
+      },
+      "assessments": [
+        {
+          "orderId": "SO-1001",
+          "requiredShipAt": "2026-08-08T17:00:00-05:00",
+          "status": "BLOCKED",
+          "lines": [
+            {
+              "orderLineId": "SO-1001-L1",
+              "sku": "BEARING-440",
+              "fulfillmentWarehouseId": "CHI",
+              "requiredQuantity": 100,
+              "projectedAllocation": 70,
+              "projectedShortfall": 30,
+              "status": "BLOCKED",
+              "supplyContributions": [
+                {
+                  "type": "ON_HAND",
+                  "warehouseId": "CHI",
+                  "sku": "BEARING-440",
+                  "quantity": 70
+                }
+              ],
+              "blockingConditions": [
+                {
+                  "type": "SHORTFALL_CAUSE_UNDETERMINED",
+                  "quantity": 30
+                }
+              ],
+              "triggeringChanges": []
+            }
+          ]
+        }
+      ],
+      "impact": {
+        "changedOrders": [
+          {
+            "orderId": "SO-1001",
+            "type": "ADDED",
+            "after": {
+              "orderId": "SO-1001",
+              "requiredShipAt": "2026-08-08T17:00:00-05:00",
+              "status": "BLOCKED",
+              "lines": [
+                {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 70,
+                  "projectedShortfall": 30,
+                  "status": "BLOCKED",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    }
+                  ],
+                  "blockingConditions": [
+                    {
+                      "type": "SHORTFALL_CAUSE_UNDETERMINED",
+                      "quantity": 30
+                    }
+                  ],
+                  "triggeringChanges": []
+                }
+              ]
+            },
+            "changedLines": [
+              {
+                "orderLineId": "SO-1001-L1",
+                "after": {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 70,
+                  "projectedShortfall": 30,
+                  "status": "BLOCKED",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    }
+                  ],
+                  "blockingConditions": [
+                    {
+                      "type": "SHORTFALL_CAUSE_UNDETERMINED",
+                      "quantity": 30
+                    }
+                  ],
+                  "triggeringChanges": []
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "index": 2,
+      "title": "Inbound shipment confirmed",
+      "event": {
+        "eventId": "event-inbound-1001",
+        "eventType": "InboundShipmentConfirmed",
+        "occurredAt": "2026-08-02T10:00:00-05:00",
+        "receivedAt": "2026-08-02T10:00:01-05:00",
+        "source": "SUPPLIER_INTEGRATION",
+        "payload": {
+          "shipmentId": "IN-900",
+          "destinationWarehouseId": "CHI",
+          "expectedAvailableAt": "2026-08-06T09:00:00-05:00",
+          "lines": [
+            {
+              "shipmentLineId": "IN-900-L1",
+              "sku": "BEARING-440",
+              "quantity": 30
+            }
+          ]
+        }
+      },
+      "assessments": [
+        {
+          "orderId": "SO-1001",
+          "requiredShipAt": "2026-08-08T17:00:00-05:00",
+          "status": "FULFILLABLE",
+          "lines": [
+            {
+              "orderLineId": "SO-1001-L1",
+              "sku": "BEARING-440",
+              "fulfillmentWarehouseId": "CHI",
+              "requiredQuantity": 100,
+              "projectedAllocation": 100,
+              "projectedShortfall": 0,
+              "status": "FULFILLABLE",
+              "supplyContributions": [
+                {
+                  "type": "ON_HAND",
+                  "warehouseId": "CHI",
+                  "sku": "BEARING-440",
+                  "quantity": 70
+                },
+                {
+                  "type": "INBOUND",
+                  "shipmentId": "IN-900",
+                  "shipmentLineId": "IN-900-L1",
+                  "warehouseId": "CHI",
+                  "sku": "BEARING-440",
+                  "quantity": 30,
+                  "expectedAvailableAt": "2026-08-06T09:00:00-05:00"
+                }
+              ],
+              "blockingConditions": [],
+              "triggeringChanges": []
+            }
+          ]
+        }
+      ],
+      "impact": {
+        "changedOrders": [
+          {
+            "orderId": "SO-1001",
+            "type": "BECAME_FULFILLABLE",
+            "before": {
+              "orderId": "SO-1001",
+              "requiredShipAt": "2026-08-08T17:00:00-05:00",
+              "status": "BLOCKED",
+              "lines": [
+                {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 70,
+                  "projectedShortfall": 30,
+                  "status": "BLOCKED",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    }
+                  ],
+                  "blockingConditions": [
+                    {
+                      "type": "SHORTFALL_CAUSE_UNDETERMINED",
+                      "quantity": 30
+                    }
+                  ],
+                  "triggeringChanges": []
+                }
+              ]
+            },
+            "after": {
+              "orderId": "SO-1001",
+              "requiredShipAt": "2026-08-08T17:00:00-05:00",
+              "status": "FULFILLABLE",
+              "lines": [
+                {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 100,
+                  "projectedShortfall": 0,
+                  "status": "FULFILLABLE",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    },
+                    {
+                      "type": "INBOUND",
+                      "shipmentId": "IN-900",
+                      "shipmentLineId": "IN-900-L1",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 30,
+                      "expectedAvailableAt": "2026-08-06T09:00:00-05:00"
+                    }
+                  ],
+                  "blockingConditions": [],
+                  "triggeringChanges": []
+                }
+              ]
+            },
+            "changedLines": [
+              {
+                "orderLineId": "SO-1001-L1",
+                "before": {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 70,
+                  "projectedShortfall": 30,
+                  "status": "BLOCKED",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    }
+                  ],
+                  "blockingConditions": [
+                    {
+                      "type": "SHORTFALL_CAUSE_UNDETERMINED",
+                      "quantity": 30
+                    }
+                  ],
+                  "triggeringChanges": []
+                },
+                "after": {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 100,
+                  "projectedShortfall": 0,
+                  "status": "FULFILLABLE",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    },
+                    {
+                      "type": "INBOUND",
+                      "shipmentId": "IN-900",
+                      "shipmentLineId": "IN-900-L1",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 30,
+                      "expectedAvailableAt": "2026-08-06T09:00:00-05:00"
+                    }
+                  ],
+                  "blockingConditions": [],
+                  "triggeringChanges": []
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "index": 3,
+      "title": "Inbound shipment delayed",
+      "event": {
+        "eventId": "event-inbound-1001-delayed",
+        "eventType": "InboundShipmentDelayed",
+        "occurredAt": "2026-08-03T12:00:00-05:00",
+        "receivedAt": "2026-08-03T12:00:01-05:00",
+        "source": "TRANSPORTATION_INTEGRATION",
+        "payload": {
+          "shipmentId": "IN-900",
+          "previousExpectedAvailableAt": "2026-08-06T09:00:00-05:00",
+          "newExpectedAvailableAt": "2026-08-11T09:00:00-05:00",
+          "reason": "Carrier delay"
+        }
+      },
+      "assessments": [
+        {
+          "orderId": "SO-1001",
+          "requiredShipAt": "2026-08-08T17:00:00-05:00",
+          "status": "BLOCKED",
+          "lines": [
+            {
+              "orderLineId": "SO-1001-L1",
+              "sku": "BEARING-440",
+              "fulfillmentWarehouseId": "CHI",
+              "requiredQuantity": 100,
+              "projectedAllocation": 70,
+              "projectedShortfall": 30,
+              "status": "BLOCKED",
+              "supplyContributions": [
+                {
+                  "type": "ON_HAND",
+                  "warehouseId": "CHI",
+                  "sku": "BEARING-440",
+                  "quantity": 70
+                }
+              ],
+              "blockingConditions": [
+                {
+                  "type": "INBOUND_AVAILABLE_TOO_LATE",
+                  "shipmentId": "IN-900",
+                  "shipmentLineId": "IN-900-L1",
+                  "quantity": 30,
+                  "expectedAvailableAt": "2026-08-11T09:00:00-05:00",
+                  "requiredShipAt": "2026-08-08T17:00:00-05:00"
+                }
+              ],
+              "triggeringChanges": [
+                {
+                  "type": "SHIPMENT_DELAYED",
+                  "shipmentId": "IN-900",
+                  "previousExpectedAvailableAt": "2026-08-06T09:00:00-05:00",
+                  "newExpectedAvailableAt": "2026-08-11T09:00:00-05:00",
+                  "changedAt": "2026-08-03T12:00:00-05:00",
+                  "reason": "Carrier delay"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "impact": {
+        "changedOrders": [
+          {
+            "orderId": "SO-1001",
+            "type": "BECAME_BLOCKED",
+            "before": {
+              "orderId": "SO-1001",
+              "requiredShipAt": "2026-08-08T17:00:00-05:00",
+              "status": "FULFILLABLE",
+              "lines": [
+                {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 100,
+                  "projectedShortfall": 0,
+                  "status": "FULFILLABLE",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    },
+                    {
+                      "type": "INBOUND",
+                      "shipmentId": "IN-900",
+                      "shipmentLineId": "IN-900-L1",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 30,
+                      "expectedAvailableAt": "2026-08-06T09:00:00-05:00"
+                    }
+                  ],
+                  "blockingConditions": [],
+                  "triggeringChanges": []
+                }
+              ]
+            },
+            "after": {
+              "orderId": "SO-1001",
+              "requiredShipAt": "2026-08-08T17:00:00-05:00",
+              "status": "BLOCKED",
+              "lines": [
+                {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 70,
+                  "projectedShortfall": 30,
+                  "status": "BLOCKED",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    }
+                  ],
+                  "blockingConditions": [
+                    {
+                      "type": "INBOUND_AVAILABLE_TOO_LATE",
+                      "shipmentId": "IN-900",
+                      "shipmentLineId": "IN-900-L1",
+                      "quantity": 30,
+                      "expectedAvailableAt": "2026-08-11T09:00:00-05:00",
+                      "requiredShipAt": "2026-08-08T17:00:00-05:00"
+                    }
+                  ],
+                  "triggeringChanges": [
+                    {
+                      "type": "SHIPMENT_DELAYED",
+                      "shipmentId": "IN-900",
+                      "previousExpectedAvailableAt": "2026-08-06T09:00:00-05:00",
+                      "newExpectedAvailableAt": "2026-08-11T09:00:00-05:00",
+                      "changedAt": "2026-08-03T12:00:00-05:00",
+                      "reason": "Carrier delay"
+                    }
+                  ]
+                }
+              ]
+            },
+            "changedLines": [
+              {
+                "orderLineId": "SO-1001-L1",
+                "before": {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 100,
+                  "projectedShortfall": 0,
+                  "status": "FULFILLABLE",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    },
+                    {
+                      "type": "INBOUND",
+                      "shipmentId": "IN-900",
+                      "shipmentLineId": "IN-900-L1",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 30,
+                      "expectedAvailableAt": "2026-08-06T09:00:00-05:00"
+                    }
+                  ],
+                  "blockingConditions": [],
+                  "triggeringChanges": []
+                },
+                "after": {
+                  "orderLineId": "SO-1001-L1",
+                  "sku": "BEARING-440",
+                  "fulfillmentWarehouseId": "CHI",
+                  "requiredQuantity": 100,
+                  "projectedAllocation": 70,
+                  "projectedShortfall": 30,
+                  "status": "BLOCKED",
+                  "supplyContributions": [
+                    {
+                      "type": "ON_HAND",
+                      "warehouseId": "CHI",
+                      "sku": "BEARING-440",
+                      "quantity": 70
+                    }
+                  ],
+                  "blockingConditions": [
+                    {
+                      "type": "INBOUND_AVAILABLE_TOO_LATE",
+                      "shipmentId": "IN-900",
+                      "shipmentLineId": "IN-900-L1",
+                      "quantity": 30,
+                      "expectedAvailableAt": "2026-08-11T09:00:00-05:00",
+                      "requiredShipAt": "2026-08-08T17:00:00-05:00"
+                    }
+                  ],
+                  "triggeringChanges": [
+                    {
+                      "type": "SHIPMENT_DELAYED",
+                      "shipmentId": "IN-900",
+                      "previousExpectedAvailableAt": "2026-08-06T09:00:00-05:00",
+                      "newExpectedAvailableAt": "2026-08-11T09:00:00-05:00",
+                      "changedAt": "2026-08-03T12:00:00-05:00",
+                      "reason": "Carrier delay"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
