@@ -6,7 +6,7 @@ import {
 import { calculateFulfillment } from "../fulfillment/calculate-fulfillment.js";
 import { applyEvent } from "../state/apply-event.js";
 import { createEmptyOperationalState } from "../state/operational-state.js";
-import { FulfillmentAssessmentComparison } from "../fulfillment/fulfillment-assessment-comparison.js";
+import type { FulfillmentAssessmentComparison } from "../fulfillment/fulfillment-assessment-comparison.js";
 import { compareFulfillmentAssessments } from "../fulfillment/compare-fulfillment-assessments.js";
 
 export interface ScenarioDefinition {
