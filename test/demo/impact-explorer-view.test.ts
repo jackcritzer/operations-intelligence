@@ -17,15 +17,44 @@ describe("buildImpactExplorerView", () => {
       name: "shipment-delay-blocks-order",
       description:
         "An inbound shipment moves past an order deadline, changing the order from fulfillable to blocked.",
+      overview: [
+        {
+          label: "Customer order",
+          value: "100 units",
+          detail: "SO-1001 · BEARING-440",
+        },
+        {
+          label: "Available now",
+          value: "70 units",
+          detail: "BEARING-440 · Warehouse CHI",
+        },
+        {
+          label: "Incoming shipment",
+          value: "30 additional units",
+          detail: "Originally due Aug 6, 2026; delayed to Aug 11, 2026",
+        },
+        {
+          label: "Customer ship deadline",
+          value: "Aug 8, 2026",
+          detail: "Required customer ship date",
+        },
+      ],
     });
 
     expect(view.defaultStepIndex).toBe(3);
 
     expect(view.steps.map((step) => step.title)).toEqual([
-      "Inventory position reported",
-      "Customer order placed",
-      "Inbound shipment confirmed",
-      "Inbound shipment delayed",
+      "70 units reported in stock",
+      "Customer orders 100 units",
+      "30 incoming units confirmed",
+      "Inbound delivery delayed",
+    ]);
+
+    expect(view.steps.map((step) => step.summary)).toEqual([
+      "CHI reports 70 usable units of BEARING-440.",
+      "Order SO-1001 requests 100 units by Aug 8, 2026. 70 units are available, leaving 30 units missing.",
+      "Shipment IN-900 adds 30 units expected Aug 6, 2026. This makes order SO-1001 fulfillable.",
+      "Shipment IN-900 is delayed from Aug 6, 2026 to Aug 11, 2026, after order SO-1001's Aug 8, 2026 deadline. Only 70 of 100 required units will be available on time.",
     ]);
 
     expect(view.steps[3]).toMatchObject({

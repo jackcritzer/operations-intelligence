@@ -68,16 +68,42 @@ function Explorer({ view }: ExplorerProps) {
   return (
     <main className="explorer">
       <header className="hero">
-        <p className="eyebrow">Operations Intelligence Engine</p>
-        <h1>Impact Explorer</h1>
-        <p className="hero-description">{view.scenario.description}</p>
+        <p className="eyebrow">
+          Operations Intelligence Engine · Impact Explorer
+        </p>
+
+        <h1>Why did this customer order become impossible to ship on time?</h1>
+
+        <p className="hero-description">
+          Follow one fixed scenario as inventory, a customer order, and an
+          incoming shipment change the fulfillment result.
+        </p>
       </header>
+      <section
+        className="scenario-overview"
+        aria-labelledby="scenario-overview-heading"
+      >
+        <header>
+          <p className="eyebrow">Fixed demonstration scenario</p>
+          <h2 id="scenario-overview-heading">Scenario at a glance</h2>
+        </header>
+
+        <div className="overview-grid">
+          {view.scenario.overview.map((item) => (
+            <article className="overview-item" key={item.label}>
+              <p>{item.label}</p>
+              <strong>{item.value}</strong>
+              <span>{item.detail}</span>
+            </article>
+          ))}
+        </div>
+      </section>
       <div className="explorer-grid">
         <section
           aria-labelledby="event-timeline-heading"
           className="timeline-panel"
         >
-          <h2 id="event-timeline-heading">Operational events</h2>
+          <h2 id="event-timeline-heading">Scenario timeline</h2>
 
           <ol className="timeline">
             {view.steps.map((step) => (
@@ -100,31 +126,109 @@ function Explorer({ view }: ExplorerProps) {
           </ol>
         </section>
 
-        <section
-          className="event-panel"
-          aria-labelledby="selected-event-heading"
-        >
-          <h2 id="selected-event-heading">{selectedStep.title}</h2>
+        <section className="event-panel">
+          <h2>{selectedStep.title}</h2>
 
-          <dl className="event-metadata">
-            <dt>Event type</dt>
-            <dd>{selectedStep.event.eventType}</dd>
-
-            <dt>Occurred at</dt>
-            <dd>{selectedStep.event.occurredAt}</dd>
-
-            <dt>Source</dt>
-            <dd>{selectedStep.event.source}</dd>
-          </dl>
+          <p className="event-summary">{selectedStep.summary}</p>
 
           <ImpactDetails impact={selectedStep.impact} />
 
           <details className="raw-event">
-            <summary>View event data</summary>
+            <summary>Technical event details</summary>
+
+            <dl className="event-metadata">
+              <dt>Backend event type</dt>
+              <dd>
+                <code>{selectedStep.event.eventType}</code>
+              </dd>
+
+              <dt>Reported at</dt>
+              <dd>{formatTechnicalTimestamp(selectedStep.event.occurredAt)}</dd>
+
+              <dt>Source system</dt>
+              <dd>{formatSourceSystem(selectedStep.event.source)}</dd>
+            </dl>
+
             <pre>{JSON.stringify(selectedStep.event, null, 2)}</pre>
           </details>
         </section>
       </div>
+      <section className="about-demo" aria-labelledby="about-demo-heading">
+        <div>
+          <p className="eyebrow">About this demonstration</p>
+          <h2 id="about-demo-heading">
+            A visualization of a tested backend service
+          </h2>
+
+          <p>
+            The browser does not calculate fulfillment. It displays the output
+            of the TypeScript engine as it processes a fixed sequence of
+            operational events.
+          </p>
+
+          <p className="about-demo-scope">
+            This demonstration uses synthetic data and one representative
+            scenario. Authentication, administration screens, live integrations,
+            and arbitrary scenario editing are intentionally outside its scope.
+          </p>
+        </div>
+
+        <nav className="about-demo-links" aria-label="Project resources">
+          <a
+            href="https://github.com/jackcritzer/operations-intelligence"
+            target="_blank"
+            rel="noreferrer"
+          >
+            View source code
+          </a>
+
+          <a
+            href="https://github.com/jackcritzer/operations-intelligence/blob/main/docs/architecture/durable-operational-state.md"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Read the architecture
+          </a>
+        </nav>
+      </section>
     </main>
   );
+}
+
+function formatEventTime(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Chicago",
+    timeZoneName: "short",
+  }).format(new Date(value));
+}
+
+function formatTechnicalTimestamp(value: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Chicago",
+    timeZoneName: "short",
+  }).format(new Date(value));
+}
+
+import type { OperationalEvent } from "../../src/events/operational-event.js";
+
+const sourceSystemLabels = {
+  WMS: "Warehouse management system (WMS)",
+  //OMS: "Order management system (OMS)",
+  ERP: "Enterprise resource planning system (ERP)",
+  SUPPLIER_INTEGRATION: "Supplier system integration",
+  TRANSPORTATION_INTEGRATION: "Transportation provider integration",
+} satisfies Record<OperationalEvent["source"], string>;
+
+function formatSourceSystem(source: OperationalEvent["source"]): string {
+  return sourceSystemLabels[source];
 }

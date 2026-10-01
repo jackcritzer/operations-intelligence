@@ -1,13 +1,36 @@
 {
   "scenario": {
     "name": "shipment-delay-blocks-order",
-    "description": "An inbound shipment moves past an order deadline, changing the order from fulfillable to blocked."
+    "description": "An inbound shipment moves past an order deadline, changing the order from fulfillable to blocked.",
+    "overview": [
+      {
+        "label": "Customer order",
+        "value": "100 units",
+        "detail": "SO-1001 · BEARING-440"
+      },
+      {
+        "label": "Available now",
+        "value": "70 units",
+        "detail": "BEARING-440 · Warehouse CHI"
+      },
+      {
+        "label": "Incoming shipment",
+        "value": "30 additional units",
+        "detail": "Originally due Aug 6, 2026; delayed to Aug 11, 2026"
+      },
+      {
+        "label": "Customer ship deadline",
+        "value": "Aug 8, 2026",
+        "detail": "Required customer ship date"
+      }
+    ]
   },
   "defaultStepIndex": 3,
   "steps": [
     {
       "index": 0,
-      "title": "Inventory position reported",
+      "title": "70 units reported in stock",
+      "summary": "CHI reports 70 usable units of BEARING-440.",
       "event": {
         "eventId": "event-inventory-1001",
         "eventType": "InventoryPositionReported",
@@ -29,7 +52,8 @@
     },
     {
       "index": 1,
-      "title": "Customer order placed",
+      "title": "Customer orders 100 units",
+      "summary": "Order SO-1001 requests 100 units by Aug 8, 2026. 70 units are available, leaving 30 units missing.",
       "event": {
         "eventId": "event-order-1001",
         "eventType": "OrderPlaced",
@@ -154,7 +178,8 @@
     },
     {
       "index": 2,
-      "title": "Inbound shipment confirmed",
+      "title": "30 incoming units confirmed",
+      "summary": "Shipment IN-900 adds 30 units expected Aug 6, 2026. This makes order SO-1001 fulfillable.",
       "event": {
         "eventId": "event-inbound-1001",
         "eventType": "InboundShipmentConfirmed",
@@ -345,7 +370,8 @@
     },
     {
       "index": 3,
-      "title": "Inbound shipment delayed",
+      "title": "Inbound delivery delayed",
+      "summary": "Shipment IN-900 is delayed from Aug 6, 2026 to Aug 11, 2026, after order SO-1001's Aug 8, 2026 deadline. Only 70 of 100 required units will be available on time.",
       "event": {
         "eventId": "event-inbound-1001-delayed",
         "eventType": "InboundShipmentDelayed",

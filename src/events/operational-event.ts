@@ -1,5 +1,5 @@
 export type EventSource =
-  "ERP" | "WMS" | "SUPPLIER_INTEGRATION" | "TRANSPORTATION_INTEGRATION";
+  "ERP" | "WMS" | "SUPPLIER_INTEGRATION" | "TRANSPORTATION_INTEGRATION"; //| "OMS";
 
 export interface EventEnvelope {
   eventId: string;
