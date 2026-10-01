@@ -26,60 +26,70 @@ export function ImpactDetails({ impact }: ImpactDetailsProps) {
 
   return (
     <section className="impact" aria-labelledby="impact-heading">
-      <h3 id="impact-heading">Order impact</h3>
+      <h3 id="impact-heading">Customer order impact</h3>
 
       {impact.changedOrders.map((order) => (
-        <article className="order-impact" key={order.orderId}>
+        <article
+          className={getOrderImpactClass(order.type, order.after?.status)}
+          key={order.orderId}
+        >
           <header className="order-impact-header">
             <h4>{order.orderId}</h4>
             <p>{formatChangeType(order.type)}</p>
           </header>
 
-          <dl className="status-transition">
-            <dt>Before</dt>
-            <dd>{order.before?.status ?? "Not assessed"}</dd>
+          {order.changedLines.map((line) => {
+            const sku = line.after?.sku ?? line.before?.sku;
+            return (
+              <section className="line-impact" key={line.orderLineId}>
+                <h4>Product: {sku}</h4>
+                <table className="comparison-table">
+                  <thead>
+                    <tr>
+                      <th>Measure</th>
+                      <th>Before this event</th>
+                      <th aria-hidden="true" className="change-arrow-column" />
+                      <th>After this event</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Status</th>
+                      <td>{order.before?.status ?? "—"}</td>
+                      <td aria-hidden="true" className="change-arrow">
+                        →
+                      </td>
+                      <td className="after-status">
+                        {order.after?.status ?? "—"}
+                      </td>
+                    </tr>
 
-            <dt>After</dt>
-            <dd>{order.after?.status ?? "Not assessed"}</dd>
-          </dl>
+                    <tr>
+                      <th scope="row">Units available by ship deadline</th>
+                      <td>
+                        {formatQuantity(line.before?.projectedAllocation)}
+                      </td>
+                      <td aria-hidden="true" className="change-arrow">
+                        →
+                      </td>
+                      <td>{formatQuantity(line.after?.projectedAllocation)}</td>
+                    </tr>
 
-          {order.changedLines.map((line) => (
-            <section className="line-impact" key={line.orderLineId}>
-              <h5>Order line {line.orderLineId}</h5>
+                    <tr>
+                      <th scope="row">Units missing by ship deadline</th>
+                      <td>{formatQuantity(line.before?.projectedShortfall)}</td>
+                      <td aria-hidden="true" className="change-arrow">
+                        →
+                      </td>
+                      <td>{formatQuantity(line.after?.projectedShortfall)}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              <table className="comparison-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Measure</th>
-                    <th scope="col">Before</th>
-                    <th scope="col">After</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr>
-                    <th scope="row">Status</th>
-                    <td>{line.before?.status ?? "—"}</td>
-                    <td>{line.after?.status ?? "—"}</td>
-                  </tr>
-
-                  <tr>
-                    <th scope="row">Projected allocation</th>
-                    <td>{formatQuantity(line.before?.projectedAllocation)}</td>
-                    <td>{formatQuantity(line.after?.projectedAllocation)}</td>
-                  </tr>
-
-                  <tr>
-                    <th scope="row">Projected shortfall</th>
-                    <td>{formatQuantity(line.before?.projectedShortfall)}</td>
-                    <td>{formatQuantity(line.after?.projectedShortfall)}</td>
-                  </tr>
-                </tbody>
-              </table>
-
-              <LineEvidence line={line} />
-            </section>
-          ))}
+                <LineEvidence line={line} />
+              </section>
+            );
+          })}
         </article>
       ))}
     </section>
@@ -100,7 +110,7 @@ function LineEvidence({ line }: LineEvidenceProps) {
   return (
     <div className="evidence-grid">
       <section className="evidence-card">
-        <h6>Supply counted after this event</h6>
+        <h6>Supply available by ship deadline</h6>
 
         {currentLine.supplyContributions.length === 0 ? (
           <p>No usable supply was identified.</p>
@@ -116,10 +126,14 @@ function LineEvidence({ line }: LineEvidenceProps) {
       </section>
 
       <section className="evidence-card">
-        <h6>Blocking conditions</h6>
+        <h6>
+          {currentLine.blockingConditions.length === 0
+            ? "Order readiness"
+            : "Why the order cannot ship"}
+        </h6>
 
         {currentLine.blockingConditions.length === 0 ? (
-          <p>No blocking conditions.</p>
+          <p>All required units are available by the ship deadline</p>
         ) : (
           <ul>
             {currentLine.blockingConditions.map((condition, index) => (
@@ -133,7 +147,7 @@ function LineEvidence({ line }: LineEvidenceProps) {
 
       {currentLine.triggeringChanges.length > 0 && (
         <section className="evidence-card">
-          <h6>Triggering changes</h6>
+          <h6>What changed</h6>
 
           <ul>
             {currentLine.triggeringChanges.map((change, index) => (
@@ -154,14 +168,14 @@ function formatSupplyContribution(contribution: SupplyContribution): string {
       return `${contribution.quantity} units available on hand at ${contribution.warehouseId}`;
 
     case "INBOUND":
-      return `${contribution.quantity} units from shipment ${contribution.shipmentId}, expected ${formatDate(contribution.expectedAvailableAt)}`;
+      return `${contribution.quantity} units from shipment ${contribution.shipmentId}, expected ${formatBusinessDate(contribution.expectedAvailableAt)}`;
   }
 }
 
 function formatBlockingCondition(condition: BlockingCondition): string {
   switch (condition.type) {
     case "INBOUND_AVAILABLE_TOO_LATE":
-      return `${condition.quantity} units from shipment ${condition.shipmentId} arrive ${formatDate(condition.expectedAvailableAt)}, after the required ship time of ${formatDate(condition.requiredShipAt)}`;
+      return `${condition.quantity} units from shipment ${condition.shipmentId} arrive ${formatBusinessDate(condition.expectedAvailableAt)}, after the required ship time of ${formatBusinessDate(condition.requiredShipAt)}`;
 
     case "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND":
       return `${condition.quantity} units are allocated to higher-priority order ${condition.consumingOrderId}`;
@@ -175,22 +189,20 @@ function formatTriggeringChange(change: TriggeringChange): string {
   switch (change.type) {
     case "SHIPMENT_DELAYED": {
       const reason =
-        change.reason === undefined ? "" : ` Reason: ${change.reason}.`;
+        change.reason === undefined
+          ? ""
+          : ` due to ${lowercaseFirst(change.reason)}`;
 
-      return `Shipment ${change.shipmentId} moved from ${formatDate(change.previousExpectedAvailableAt)} to ${formatDate(change.newExpectedAvailableAt)}.${reason}`;
+      return `Shipment ${change.shipmentId} was delayed from ${formatBusinessDate(change.previousExpectedAvailableAt)} to ${formatBusinessDate(change.newExpectedAvailableAt)}${reason}.`;
     }
   }
 }
 
-function formatDate(value: string): string {
+function formatBusinessDate(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
     timeZone: "America/Chicago",
-    timeZoneName: "short",
   }).format(new Date(value));
 }
 
@@ -215,4 +227,27 @@ function formatChangeType(type: OrderFulfillmentChangeType): string {
 
 function formatQuantity(quantity: number | undefined): string {
   return quantity === undefined ? "—" : `${quantity} units`;
+}
+
+function lowercaseFirst(value: string): string {
+  return value.charAt(0).toLowerCase() + value.slice(1);
+}
+
+function getOrderImpactClass(
+  type: OrderFulfillmentChangeType,
+  resultingStatus: string | undefined,
+): string {
+  if (type === "BECAME_BLOCKED") {
+    return "order-impact order-impact--blocked";
+  }
+
+  if (type === "BECAME_FULFILLABLE") {
+    return "order-impact order-impact--fulfillable";
+  }
+
+  if (type === "ADDED" && resultingStatus === "BLOCKED") {
+    return "order-impact order-impact--blocked";
+  }
+
+  return "order-impact order-impact--neutral";
 }
