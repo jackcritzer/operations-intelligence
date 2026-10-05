@@ -370,7 +370,7 @@
     },
     {
       "index": 3,
-      "title": "Inbound delivery delayed",
+      "title": "Incoming shipment delayed",
       "summary": "Shipment IN-900 is delayed from Aug 6, 2026 to Aug 11, 2026, after order SO-1001's Aug 8, 2026 deadline. Only 70 of 100 required units will be available on time.",
       "event": {
         "eventId": "event-inbound-1001-delayed",

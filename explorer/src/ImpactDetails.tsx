@@ -110,7 +110,7 @@ function LineEvidence({ line }: LineEvidenceProps) {
   return (
     <div className="evidence-grid">
       <section className="evidence-card">
-        <h6>Supply available by ship deadline</h6>
+        <h5>Supply available by ship deadline</h5>
 
         {currentLine.supplyContributions.length === 0 ? (
           <p>No usable supply was identified.</p>
@@ -126,11 +126,11 @@ function LineEvidence({ line }: LineEvidenceProps) {
       </section>
 
       <section className="evidence-card">
-        <h6>
+        <h5>
           {currentLine.blockingConditions.length === 0
             ? "Order readiness"
             : "Why the order cannot ship"}
-        </h6>
+        </h5>
 
         {currentLine.blockingConditions.length === 0 ? (
           <p>All required units are available by the ship deadline</p>
@@ -147,7 +147,7 @@ function LineEvidence({ line }: LineEvidenceProps) {
 
       {currentLine.triggeringChanges.length > 0 && (
         <section className="evidence-card">
-          <h6>What changed</h6>
+          <h5>What changed</h5>
 
           <ul>
             {currentLine.triggeringChanges.map((change, index) => (
@@ -175,7 +175,7 @@ function formatSupplyContribution(contribution: SupplyContribution): string {
 function formatBlockingCondition(condition: BlockingCondition): string {
   switch (condition.type) {
     case "INBOUND_AVAILABLE_TOO_LATE":
-      return `${condition.quantity} units from shipment ${condition.shipmentId} arrive ${formatBusinessDate(condition.expectedAvailableAt)}, after the required ship time of ${formatBusinessDate(condition.requiredShipAt)}`;
+      return `${condition.quantity} units from shipment ${condition.shipmentId} arrive ${formatBusinessDate(condition.expectedAvailableAt)}, after the required ship date of ${formatBusinessDate(condition.requiredShipAt)}`;
 
     case "SUPPLY_CONSUMED_BY_HIGHER_PRIORITY_DEMAND":
       return `${condition.quantity} units are allocated to higher-priority order ${condition.consumingOrderId}`;
@@ -191,10 +191,20 @@ function formatTriggeringChange(change: TriggeringChange): string {
       const reason =
         change.reason === undefined
           ? ""
-          : ` due to ${lowercaseFirst(change.reason)}`;
+          : ` due to ${formatDelayReason(change.reason)}`;
 
-      return `Shipment ${change.shipmentId} was delayed from ${formatBusinessDate(change.previousExpectedAvailableAt)} to ${formatBusinessDate(change.newExpectedAvailableAt)}${reason}.`;
+      return `Shipment ${change.shipmentId} was delayed from ${formatBusinessDate(change.previousExpectedAvailableAt)} to ${formatBusinessDate(change.newExpectedAvailableAt)}${reason}`;
     }
+  }
+}
+
+function formatDelayReason(reason: string): string {
+  switch (reason) {
+    case "Carrier delay":
+      return "a carrier delay";
+
+    default:
+      return lowercaseFirst(reason);
   }
 }
 

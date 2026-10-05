@@ -41,13 +41,39 @@ The explorer should show:
 
 ## Data flow
 
-The explorer consumes generated demonstration data:
+```mermaid
+flowchart LR
+    S["Scenario definition"] --> R["Backend scenario runner"]
+    R --> E["Operational event processing"]
+    E --> F["Fulfillment assessments"]
+    F --> J["Generated JSON"]
+    J --> U["React Impact Explorer"]
+```
 
-1. The existing scenario definition supplies operational events.
-2. The existing scenario runner executes the events through the real engine.
-3. A small adapter converts the results into an explorer-specific read model.
-4. A build-time script writes the read model as static JSON.
-5. The frontend renders that JSON without reproducing domain logic.
+The Explorer uses a build-time demonstration adapter:
+
+1. An existing scenario definition supplies the ordered operational events.
+2. The backend processes those events through the same application and fulfillment logic used elsewhere in the project.
+3. After each event, the scenario runner captures the event, resulting assessments, and before-and-after order impact.
+4. The generated result is serialized as JSON.
+5. The React application reads that JSON and presents the scenario as an interactive timeline.
+
+The browser does not calculate fulfillment, replay domain events, or reproduce the backend’s business rules. It only selects and renders steps from the generated scenario output.
+
+This boundary keeps the demonstration deployable as a static GitHub Pages site while preserving the backend as the source of all operational conclusions.
+
+## Intentional constraints
+
+The Explorer demonstrates one representative scenario. It is not intended to provide:
+
+- arbitrary event or scenario editing;
+- direct database access;
+- a live connection to the Fastify server;
+- authentication or user accounts;
+- operational administration screens;
+- customer-specific or production data.
+
+A live API-backed interface could be added later, but it would add deployment and operational complexity without materially improving the current portfolio demonstration.
 
 ## Architecture constraints
 

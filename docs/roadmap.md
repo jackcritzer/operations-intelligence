@@ -128,6 +128,24 @@ start service
 - Database migrations are not yet tracked by a dedicated migration tool.
 - Deployment, readiness, metrics, backup, and recovery procedures remain future operational work.
 
+## Completed: Impact Explorer
+
+The Impact Explorer provides a focused demonstration surface for the Operations Intelligence Engine.
+
+It:
+
+- visualizes a backend-generated four-event fulfillment scenario;
+- shows how an incoming shipment initially makes an order fulfillable;
+- explains how delaying that shipment creates a 30-unit shortfall;
+- compares order status, available supply, and missing supply before and after each event;
+- exposes supporting supply, blocking conditions, and triggering changes;
+- links the demonstration back to the backend source and architecture;
+- is deployed publicly through GitHub Pages.
+
+Live demonstration: [Impact Explorer](https://jackcritzer.github.io/operations-intelligence/)
+
+The explorer is intentionally not an administration application. Authentication, CRUD screens, live integrations, and arbitrary scenario editing remain outside its scope.
+
 ## Candidate: Multi-instance concurrency correctness
 
 ### Operational question
@@ -163,23 +181,6 @@ Potential work includes:
 - calculation or rule-version metadata for historical conclusions.
 
 Persisted assessment or impact snapshots become justified when the system must preserve what it concluded at a specific time rather than recalculate the answer using current rules.
-
-## Candidate: Impact explorer
-
-### User question
-
-> Can an operator quickly see how an event changed supply allocation and customer-order risk?
-
-A bounded visualization may provide:
-
-- an operational-event timeline;
-- current order status;
-- affected-order highlighting;
-- before-and-after allocation and shortfall;
-- blocker and triggering-change evidence;
-- replay of representative scenarios.
-
-This should remain a demonstration surface for the backend, not expand into a general administrative frontend.
 
 ## Candidate: Operable deployment
 

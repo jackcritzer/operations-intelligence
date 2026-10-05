@@ -47,7 +47,7 @@ describe("buildImpactExplorerView", () => {
       "70 units reported in stock",
       "Customer orders 100 units",
       "30 incoming units confirmed",
-      "Inbound delivery delayed",
+      "Incoming shipment delayed",
     ]);
 
     expect(view.steps.map((step) => step.summary)).toEqual([
