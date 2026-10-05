@@ -147,6 +147,17 @@ button {
   letter-spacing: -0.025em;
 }
 
+.event-panel,
+.raw-event {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.raw-event pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .event-metadata,
 .status-transition {
   display: grid;
@@ -291,7 +302,7 @@ button {
   background: #f9fafb;
 }
 
-.evidence-card h6 {
+.evidence-card h5 {
   margin: 0 0 10px;
   font-size: 0.78rem;
   letter-spacing: 0.05em;
@@ -478,6 +489,12 @@ button {
 .about-demo-links a:hover {
   border-color: #7e9dcc;
   background: #eff5ff;
+}
+
+.about-demo-links a:focus-visible,
+.raw-event summary:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 25%);
+  outline-offset: 3px;
 }
 
 @media (max-width: 800px) {

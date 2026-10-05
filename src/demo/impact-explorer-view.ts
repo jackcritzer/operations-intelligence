@@ -70,7 +70,7 @@ function getEventTitle(event: OperationalEvent): string {
       return `${sumQuantities(event.payload.lines)} incoming units confirmed`;
 
     case "InboundShipmentDelayed":
-      return "Inbound delivery delayed";
+      return "Incoming shipment delayed";
   }
 }
 
