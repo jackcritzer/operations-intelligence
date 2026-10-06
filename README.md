@@ -2,7 +2,12 @@
 
 An explainable TypeScript backend that combines orders, warehouse inventory, inbound supply, and transportation events to identify customer commitments at risk.
 
-The project is organized around operational decisions rather than CRUD resources.
+**Project status:** Portfolio project in active development. The fulfillment engine, durable event replay, Fastify API, and interactive Impact Explorer are implemented.
+
+[![CI](https://github.com/jackcritzer/operations-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/jackcritzer/operations-intelligence/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Impact_Explorer-2563eb)](https://jackcritzer.github.io/operations-intelligence/)
+
+Rather than only storing operational records, the service evaluates how each event changes order fulfillment and returns the evidence behind each assessment.
 
 ## What it answers
 
@@ -39,6 +44,8 @@ Then open the local URL printed by Vite.
 The generated JSON is produced by running the real backend scenario through the fulfillment engine. The React interface reads that output and does not duplicate the backend’s business rules.
 
 ## Example: a shipment delay blocks an order
+
+This API example is a separate, smaller executable scenario from the Impact Explorer: it depends on four inbound units rather than the Explorer's 30. Both scenarios exercise the same shipment-delay rule with different fixture quantities.
 
 ```mermaid
 flowchart LR
