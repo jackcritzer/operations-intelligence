@@ -7,7 +7,7 @@ An explainable TypeScript backend that combines orders, warehouse inventory, inb
 [![CI](https://github.com/jackcritzer/operations-intelligence/actions/workflows/ci.yml/badge.svg)](https://github.com/jackcritzer/operations-intelligence/actions/workflows/ci.yml)
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Impact_Explorer-2563eb)](https://jackcritzer.github.io/operations-intelligence/)
 
-The project is organized around operational decisions rather than CRUD resources.
+Rather than only storing operational records, the service evaluates how each event changes order fulfillment and returns the evidence behind each assessment.
 
 ## What it answers
 
